@@ -63,8 +63,9 @@ jobs:
           echo "✅ 自定义距离修改完成"
 
           echo "📥 开始替换mapboxtoken"
+          # 核心修改：匹配单引号包裹的 Mapbox Token 字符串，直接替换
           sed -i \
-            -e "/const MAPBOX_TOKEN =/ s/'\''[^']*'\''/'\''${{ secrets.MAPBOX }}'\''/g" \
+            -e "s/'pk[^']*'/'${{ secrets.MAPBOX }}'/g" \
           ./src/utils/const.ts
           echo "✅ mapboxtoken替换完成"
 
