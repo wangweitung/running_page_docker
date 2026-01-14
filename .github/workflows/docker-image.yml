@@ -21,9 +21,26 @@ jobs:
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      # 源码仓库地址
+      RUNNING_PAGE_REPO: https://github.com/yihong0618/running_page
+      # 源码克隆后的目录
+      SRC_DIR: ./running_page_src
+
     steps:
-      - name: 检出代码
+      - name: 检出当前仓库代码
         uses: actions/checkout@v4
+
+      - name: 克隆running_page源码仓库
+        run: |
+          echo "📥 开始克隆 running_page 源码仓库"
+          git clone ${{ env.RUNNING_PAGE_REPO }} ${{ env.SRC_DIR }}
+          # 进入源码目录，确认Dockerfile存在
+          cd ${{ env.SRC_DIR }}
+          if [ ! -f Dockerfile ]; then
+            echo "❌ 源码目录中未找到Dockerfile"
+            exit 1
+          fi
+          echo "✅ 源码克隆完成，Dockerfile存在"
 
       - name: 设置Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -36,10 +53,14 @@ jobs:
       - name: 构建Docker镜像
         id: build-image
         run: |
-          APP_TYPE="${{ github.event.inputs.app_type || 'Strava' }}"
+          # 获取构建类型（手动触发优先，默认Keep）
+          APP_TYPE="${{ github.event.inputs.app_type || 'Keep' }}"
           echo "🔨 开始构建 ${APP_TYPE} 平台镜像，架构：linux/amd64"
           
-          # 统一构建逻辑
+          # 进入源码目录执行构建
+          cd ${{ env.SRC_DIR }}
+          
+          # 初始化构建参数
           BUILD_ARGS=""
           case $APP_TYPE in
             Strava)
@@ -56,9 +77,22 @@ jobs:
               BUILD_ARGS="--build-arg app=Garmin \
                 --build-arg secret_string=${{ secrets.GARMIN_SECRET_STRING }}"
               ;;
+            Garmin-CN)
+              BUILD_ARGS="--build-arg app=Garmin-CN \
+                --build-arg secret_string=${{ secrets.GARMIN_CN_SECRET_STRING }}"
+              ;;
+            Nike_to_Strava)
+              BUILD_ARGS="--build-arg app=Nike_to_Strava \
+                --build-arg nike_refresh_token=${{ secrets.NIKE_REFRESH_TOKEN }} \
+                --build-arg strava_client_id=${{ secrets.STRAVA_CLIENT_ID }} \
+                --build-arg strava_client_secret=${{ secrets.STRAVA_CLIENT_SECRET }} \
+                --build-arg strava_refresh_token=${{ secrets.STRAVA_REFRESH_TOKEN }}"
+              ;;
             Keep)
+              # 适配你要求的keep_phone_number和keep_password参数
               BUILD_ARGS="--build-arg app=Keep \
-                --build-arg keep_cookie=${{ secrets.KEEP_COOKIE }}"
+                --build-arg keep_phone_number=${{ secrets.KEEP_PHONE_NUMBER }} \
+                --build-arg keep_password=${{ secrets.KEEP_PASSWORD }}"
               ;;
             *)
               echo "❌ 不支持的平台类型：${APP_TYPE}"
@@ -66,11 +100,11 @@ jobs:
               ;;
           esac
           
-          # 仅构建amd64，使用--load直接加载到本地Docker（无需tar包中转）
+          # 构建镜像（单架构直接load到本地）
           docker buildx build -t running_page:${{ github.sha }} \
             --platform linux/amd64 \
             $BUILD_ARGS \
-            --load . # --load替代tar包导出，单架构直接加载
+            --load .
 
       - name: 登录Docker Hub
         uses: docker/login-action@v3
@@ -81,9 +115,17 @@ jobs:
 
       - name: 推送镜像到Docker Hub
         run: |
-          echo "📤 推送镜像到 Docker Hub：${{ env.DOCKERHUB_USERNAME }}/running_page:latest"
-          docker tag running_page:${{ github.sha }} ${{ env.DOCKERHUB_USERNAME }}/running_page:latest
-          docker push ${{ env.DOCKERHUB_USERNAME }}/running_page:latest
+          # 增加APP_TYPE标签，方便区分不同平台镜像
+          TAG_LATEST="${{ env.DOCKERHUB_USERNAME }}/running_page:latest"
+          TAG_APP="${{ env.DOCKERHUB_USERNAME }}/running_page:${{ github.event.inputs.app_type || 'Keep' }}-${{ github.sha }}"
+          
+          echo "📤 推送镜像到 Docker Hub：${TAG_LATEST}"
+          docker tag running_page:${{ github.sha }} $TAG_LATEST
+          docker push $TAG_LATEST
+          
+          echo "📤 推送平台专属镜像：${TAG_APP}"
+          docker tag running_page:${{ github.sha }} $TAG_APP
+          docker push $TAG_APP
         if: success() && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
 
       - name: 登录GitHub Packages
@@ -96,7 +138,15 @@ jobs:
 
       - name: 推送镜像到GitHub Packages
         run: |
-          echo "📤 推送镜像到 GitHub Packages：ghcr.io/${{ github.repository_owner }}/running_page:latest"
-          docker tag running_page:${{ github.sha }} ghcr.io/${{ github.repository_owner }}/running_page:latest
-          docker push ghcr.io/${{ github.repository_owner }}/running_page:latest
+          # 同样增加平台标签
+          TAG_LATEST="ghcr.io/${{ github.repository_owner }}/running_page:latest"
+          TAG_APP="ghcr.io/${{ github.repository_owner }}/running_page:${{ github.event.inputs.app_type || 'Keep' }}-${{ github.sha }}"
+          
+          echo "📤 推送镜像到 GitHub Packages：${TAG_LATEST}"
+          docker tag running_page:${{ github.sha }} $TAG_LATEST
+          docker push $TAG_LATEST
+          
+          echo "📤 推送平台专属镜像：${TAG_APP}"
+          docker tag running_page:${{ github.sha }} $TAG_APP
+          docker push $TAG_APP
         if: success()
