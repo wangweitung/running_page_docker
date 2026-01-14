@@ -180,7 +180,8 @@ jobs:
             Keep)
               BUILD_ARGS="--build-arg app=Keep \
                 --build-arg keep_phone_number=${{ secrets.KEEP_PHONE_NUMBER }} \
-                --build-arg keep_password=${{ secrets.KEEP_PASSWORD }}"
+                --build-arg keep_password=${{ secrets.KEEP_PASSWORD }} \
+                --build-arg YOUR_NAME=${{ secrets.MY_NAME }}"
               ;;
             *)
               echo "❌ 不支持的平台类型：${APP_TYPE}"
