@@ -1,258 +1,75 @@
-name: Daily Check and Build
+name: 自动化构建 Running Page Docker 镜像
 
+# 触发条件：1. 推送到main分支 2. 手动触发
 on:
-  schedule:
-    # 每天 UTC 时间 00:00 检查（北京时间 08:00）
-    - cron: '0 0 * * *'
+  push:
+    branches: [ main ]
   workflow_dispatch:
     inputs:
-      force_build:
-        description: '强制构建镜像'
-        required: false
-        default: false
-        type: boolean
+      app_type:
+        description: '要构建的平台类型（NRC/Garmin/Garmin-CN/Strava/Nike_to_Strava/Keep）'
+        required: true
+        default: 'Strava'
 
-env:
-  DOCKERHUB_USERNAME: wangweitung
-  IMAGE_NAME: running-page
-  DOCKERFILE_PATH: ./Dockerfile
+# 配置权限
+permissions:
+  contents: read
+  packages: write # 推送到GitHub Packages需要
 
 jobs:
-  check-and-build:
+  build-and-push:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        fetch-depth: 0
+      # 1. 拉取仓库源码
+      - name: 检出代码
+        uses: actions/checkout@v4
 
-    - name: Setup Docker Buildx
-      uses: docker/setup-buildx-action@v3
-      with:
-        driver-opts: |
-          image=moby/buildkit:latest
+      # 2. 设置Docker Buildx（支持多架构构建）
+      - name: 设置Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Cache Docker layers
-      uses: actions/cache@v3
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-
+      # 3. 构建Docker镜像（根据输入的平台类型传参）
+      - name: 构建镜像
+        run: |
+          # 定义构建参数（根据app_type适配，这里以Strava为例，可扩展其他平台）
+          if [ "${{ github.event.inputs.app_type }}" = "Strava" ]; then
+            docker build -t running_page:${{ github.sha }} . \
+              --build-arg app=Strava \
+              --build-arg client_id="${{ secrets.STRAVA_CLIENT_ID }}" \
+              --build-arg client_secret="${{ secrets.STRAVA_CLIENT_SECRET }}" \
+              --build-arg refresh_token="${{ secrets.STRAVA_REFRESH_TOKEN }}"
+          elif [ "${{ github.event.inputs.app_type }}" = "NRC" ]; then
+            docker build -t running_page:${{ github.sha }} . \
+              --build-arg app=NRC \
+              --build-arg nike_refresh_token="${{ secrets.NIKE_REFRESH_TOKEN }}"
+          # 可继续添加Garmin/Keep等平台的分支逻辑
+          fi
 
-    - name: Login to DockerHub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ env.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # （可选）4. 推送到Docker Hub
+      - name: 登录Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+        if: success()
 
-    - name: Get latest commit from target repo
-      id: get_commit
-      run: |
-        # 获取 running_page 仓库的最新提交
-        echo "Fetching latest commit from yihong0618/running_page..."
-        response=$(curl -s -H "Accept: application/vnd.github.v3+json" \
-          https://api.github.com/repos/yihong0618/running_page/commits/main)
-        
-        latest_commit=$(echo "$response" | jq -r '.sha')
-        commit_date=$(echo "$response" | jq -r '.commit.committer.date')
-        commit_message=$(echo "$response" | jq -r '.commit.message' | head -n 1)
-        
-        echo "Latest commit: $latest_commit"
-        echo "Commit date: $commit_date"
-        echo "Commit message: $commit_message"
-        
-        echo "latest_commit=$latest_commit" >> $GITHUB_OUTPUT
-        echo "commit_date=$commit_date" >> $GITHUB_OUTPUT
-        echo "commit_message=$commit_message" >> $GITHUB_ENV
+      - name: 推送镜像到Docker Hub
+        run: |
+          docker tag running_page:${{ github.sha }} ${{ secrets.DOCKER_HUB_USERNAME }}/running_page:latest
+          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/running_page:latest
+        if: success()
 
-    - name: Check if need to build
-      id: check_build
-      run: |
-        # 读取上次构建的commit
-        if [ -f "last_build_commit.txt" ]; then
-          last_commit=$(cat last_build_commit.txt)
-          echo "Last built commit: ${last_commit:0:8}"
-        else
-          last_commit=""
-          echo "No previous build found (first build)"
-        fi
-        
-        latest_commit="${{ steps.get_commit.outputs.latest_commit }}"
-        force_build="${{ github.event.inputs.force_build }}"
-        
-        if [ "$force_build" = "true" ]; then
-          echo "BUILD_REASON=manual_force" >> $GITHUB_OUTPUT
-          echo "SHOULD_BUILD=true" >> $GITHUB_OUTPUT
-        elif [ -z "$last_commit" ] || [ "$last_commit" != "$latest_commit" ]; then
-          echo "BUILD_REASON=new_commit" >> $GITHUB_OUTPUT
-          echo "SHOULD_BUILD=true" >> $GITHUB_OUTPUT
-        else
-          echo "BUILD_REASON=no_changes" >> $GITHUB_OUTPUT
-          echo "SHOULD_BUILD=false" >> $GITHUB_OUTPUT
-        fi
-        
-        # 保存最新commit到文件
-        echo "$latest_commit" > last_build_commit.txt
+      # （可选）5. 推送到GitHub Packages
+      - name: 登录GitHub Packages
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+        if: success()
 
-    - name: Clone source repository
-      if: steps.check_build.outputs.SHOULD_BUILD == 'true'
-      run: |
-        echo "Cloning yihong0618/running_page..."
-        rm -rf source-repo 2>/dev/null || true
-        git clone --depth 1 https://github.com/yihong0618/running_page.git source-repo
-        echo "Repository cloned successfully!"
-        
-        # 显示仓库信息
-        cd source-repo
-        echo "Source repo branch: $(git branch --show-current)"
-        echo "Source repo commit: $(git rev-parse --short HEAD)"
-        cd ..
-
-    - name: Create Dockerfile
-      if: steps.check_build.outputs.SHOULD_BUILD == 'true'
-      run: |
-        echo "Creating Dockerfile..."
-        cat > Dockerfile << 'EOF'
-        # ========================================
-        # Running Page Docker Image
-        # Auto-built from: https://github.com/yihong0618/running_page
-        # Build date: $(date)
-        # Source commit: ${{ steps.get_commit.outputs.latest_commit }}
-        # ========================================
-        
-        # Build stage
-        FROM node:18-alpine AS builder
-        
-        WORKDIR /app
-        
-        # Copy package files
-        COPY source-repo/package*.json ./
-        
-        # Install dependencies
-        RUN npm ci --only=production
-        
-        # Copy source code
-        COPY source-repo/ .
-        
-        # Build the application
-        RUN npm run build
-        
-        # Production stage
-        FROM node:18-alpine
-        
-        WORKDIR /app
-        
-        # Install serve for static files
-        RUN npm install -g serve@14.2.1
-        
-        # Copy built files from builder
-        COPY --from=builder /app/public ./public
-        COPY --from=builder /app/.next/static ./.next/static
-        
-        # Create non-root user
-        RUN addgroup -g 1001 -S nodejs && \
-            adduser -S nodejs -u 1001
-        
-        # Change ownership
-        RUN chown -R nodejs:nodejs /app
-        
-        # Switch to non-root user
-        USER nodejs
-        
-        # Health check
-        HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-          CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
-        
-        # Expose port
-        EXPOSE 3000
-        
-        # Start the application
-        CMD ["serve", "-s", "public", "-l", "3000"]
-        EOF
-        
-        echo "Dockerfile created:"
-        echo "=================="
-        cat Dockerfile
-        echo "=================="
-
-    - name: Build and push Docker image
-      if: steps.check_build.outputs.SHOULD_BUILD == 'true'
-      run: |
-        # Set image tags
-        DATE_TAG=$(date +'%Y%m%d')
-        SHORT_COMMIT="${{ steps.get_commit.outputs.latest_commit }}"
-        SHORT_COMMIT=${SHORT_COMMIT:0:8}
-        
-        echo "Building Docker image..."
-        echo "Tags:"
-        echo "  - ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
-        echo "  - ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:$DATE_TAG"
-        echo "  - ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:$SHORT_COMMIT"
-        
-        # Build and push with multiple tags
-        docker buildx build \
-          --platform linux/amd64,linux/arm64 \
-          -t ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest \
-          -t ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:$DATE_TAG \
-          -t ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:$SHORT_COMMIT \
-          --push \
-          --cache-from type=local,src=/tmp/.buildx-cache \
-          --cache-to type=local,dest=/tmp/.buildx-cache-new \
-          .
-        
-        # Move new cache to old location
-        rm -rf /tmp/.buildx-cache
-        mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-
-    - name: Commit build record
-      if: steps.check_build.outputs.SHOULD_BUILD == 'true'
-      run: |
-        git config --global user.name "GitHub Actions Bot"
-        git config --global user.email "actions@github.com"
-        
-        # Add and commit the build record
-        git add last_build_commit.txt
-        git commit -m "build: update to commit ${{ steps.get_commit.outputs.latest_commit:0:8 }}
-        
-        - Source: ${{ env.commit_message }}
-        - Date: $(date)
-        - Reason: ${{ steps.check_build.outputs.BUILD_REASON }}" || echo "No changes to commit"
-        
-        # Push changes
-        git push origin main || echo "Push failed or no changes"
-
-    - name: Output build summary
-      if: always()
-      run: |
-        echo "========================================"
-        echo "          BUILD SUMMARY                "
-        echo "========================================"
-        echo "Repository: wangweitung/running_page_docker"
-        echo "Source Repo: yihong0618/running_page"
-        echo "Build Status: ${{ job.status }}"
-        echo "Should Build: ${{ steps.check_build.outputs.SHOULD_BUILD }}"
-        echo "Build Reason: ${{ steps.check_build.outputs.BUILD_REASON }}"
-        
-        if [ "${{ steps.check_build.outputs.SHOULD_BUILD }}" = "true" ]; then
-          echo "✅ Image Built and Pushed!"
-          DATE_TAG=$(date +'%Y%m%d')
-          SHORT_COMMIT="${{ steps.get_commit.outputs.latest_commit:0:8 }}"
-          echo "📦 Docker Image Tags:"
-          echo "   - wangweitung/running-page:latest"
-          echo "   - wangweitung/running-page:$DATE_TAG"
-          echo "   - wangweitung/running-page:$SHORT_COMMIT"
-          echo ""
-          echo "🔗 DockerHub URL:"
-          echo "   https://hub.docker.com/r/wangweitung/running-page"
-          echo ""
-          echo "🚀 Pull Command:"
-          echo "   docker pull wangweitung/running-page:latest"
-        else
-          echo "⏭️  No build needed (no new changes)"
-        fi
-        echo "========================================"
+      - name: 推送镜像到GitHub Packages
+        run: |
+          docker tag running_page:${{ github.sha }} ghcr.io/${{ github.repository_owner }}/running_page:latest
+          docker push ghcr.io/${{ github.repository_owner }}/running_page:latest
+        if: success()
