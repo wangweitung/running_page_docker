@@ -16,6 +16,12 @@
 - DIS2
 - DIS3
 - MAPBOX
+- SITEtitle
+- SITEurl
+- SITEdescription
+- BLOGurl
+- ABOUTurl
+
 3. 手动执行actions构建。
 
 ### 版本说明

@@ -68,6 +68,24 @@ jobs:
           ./src/utils/const.ts
           echo "✅ mapboxtoken替换完成"
 
+          # 新增：修改 src/static/site-metadata.ts 中的对应字段（核心正确逻辑）
+          echo "📥 开始替换 site-metadata.ts 中的站点配置"
+          SITE_METADATA_FILE="./src/static/site-metadata.ts"
+          # 1. 检查文件是否存在
+          if [ ! -f "$SITE_METADATA_FILE" ]; then
+            echo "❌ 未找到 $SITE_METADATA_FILE 文件"
+            exit 1
+          fi
+          # 2. 使用 sed 逐一替换目标字段（与你的需求完全对应）
+          sed -i \
+            -e "s/siteTitle: 'Running Page'/siteTitle: '${{ secrets.SITEtitle }}'/g" \
+            -e "s/siteUrl: 'https:\/\/yihong.run'/siteUrl: '${{ secrets.SITEurl }}'/g" \
+            -e "s/description: 'Personal site and blog'/description: '${{ secrets.SITEdescription }}'/g" \
+            -e "s/url: 'https:\/\/yihong.run\/running'/url: '${{ secrets.BLOGurl }}'/g" \
+            -e "s/url: 'https:\/\/github.com\/yihong0618\/running_page\/blob\/master\/README-CN.md'/url: '${{ secrets.ABOUTurl }}'/g" \
+          "$SITE_METADATA_FILE"
+          echo "✅ site-metadata.ts 站点配置替换完成"
+
         
       - name: 安装Python依赖（用于生成SVG）
         run: |
