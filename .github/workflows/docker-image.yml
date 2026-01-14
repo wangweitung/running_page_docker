@@ -54,6 +54,11 @@ jobs:
             exit 1
           fi
           echo "✅ 源码克隆完成，Dockerfile存在"
+          sed -i \
+            -e '/gen_svg.py/ s/--min-distance [0-9.]\+/--min-distance 3.0/g' \
+            -e '/gen_svg.py/ s/--special-distance [0-9]\+/--special-distance 5/g' \
+            -e '/gen_svg.py/ s/--special-distance2 [0-9]\+/--special-distance2 10/g' \
+          Dockerfile
 
       - name: 安装Python依赖（用于生成SVG）
         run: |
