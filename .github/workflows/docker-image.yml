@@ -8,7 +8,7 @@ on:
       app_type:
         description: '要构建的平台类型（NRC/Garmin/Garmin-CN/Strava/Nike_to_Strava/Keep）'
         required: true
-        default: 'Strava'
+        default: 'Keep'
 
 permissions:
   contents: read
@@ -21,32 +21,25 @@ jobs:
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-      # 新增：指定Buildx构建器（替代install参数）
-      BUILDX_BUILDER: multi-arch-builder
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      # 修复：移除废弃的install参数，改用预创建构建器
+      # 修复：移除废弃参数，使用默认构建器（自动创建）
       - name: 设置Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          driver: docker-container # 显式指定容器驱动（更稳定）
+          driver: docker-container
           driver-opts: network=host
-          # 预创建多架构构建器（替代手动create）
           buildkitd-flags: --debug
-          platforms: linux/amd64,linux/arm64 # 预设支持的架构
+          platforms: linux/amd64,linux/arm64
 
-      # 修复构建步骤：移除手动create构建器，直接使用预设的BUILDX_BUILDER
+      # 修复构建步骤：删除手动切换构建器的无效命令
       - name: 构建Docker镜像
         id: build-image
         run: |
           APP_TYPE="${{ github.event.inputs.app_type || 'Strava' }}"
           echo "🔨 开始构建 ${APP_TYPE} 平台镜像，架构：linux/amd64,linux/arm64"
-          
-          # 无需手动create构建器（setup-buildx-action已自动创建）
-          # 直接使用BUILDX_BUILDER环境变量指定的构建器
-          docker buildx use $BUILDX_BUILDER
           
           # 统一构建逻辑（简化重复代码）
           BUILD_ARGS=""
@@ -75,14 +68,13 @@ jobs:
               ;;
           esac
           
-          # 执行多架构构建（--load仅支持单架构，改用--push到本地registry或直接推送）
-          # 注意：--load无法同时加载多架构，若需本地测试可拆分架构，或直接推送仓库
+          # 执行多架构构建（导出为tar包，兼容本地导入）
           docker buildx build -t running_page:${{ github.sha }} \
             --platform linux/amd64,linux/arm64 \
             $BUILD_ARGS \
             --output type=docker,dest=/tmp/running_page.tar .
           
-          # 导入镜像到本地Docker（兼容多架构）
+          # 导入镜像到本地Docker
           docker load < /tmp/running_page.tar
 
       - name: 登录Docker Hub
