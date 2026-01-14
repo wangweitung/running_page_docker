@@ -90,76 +90,76 @@ jobs:
           echo "✅ site-metadata.ts 站点配置替换完成"
 
         
-      - name: 安装Python依赖（用于生成SVG）
-        run: |
-          echo "📦 安装Python及依赖包"
-          sudo apt update && sudo apt install -y python3 python3-pip python3-venv
-          cd ${{ env.SRC_DIR }}
-          # 安装running_page依赖
-          pip3 install -r requirements.txt --user
-          echo "✅ Python依赖安装完成"
+      # - name: 安装Python依赖（用于生成SVG）
+      #   run: |
+      #     echo "📦 安装Python及依赖包"
+      #     sudo apt update && sudo apt install -y python3 python3-pip python3-venv
+      #     cd ${{ env.SRC_DIR }}
+      #     # 安装running_page依赖
+      #     pip3 install -r requirements.txt --user
+      #     echo "✅ Python依赖安装完成"
 
-      - name: 数据下载并生成SVG图片
-        id: generate-svg
-        run: |
-          # 获取构建类型（手动触发优先，默认Strava）
-          APP_TYPE="${{ github.event.inputs.app_type || 'Strava' }}"
-          echo "📊 开始处理 ${APP_TYPE} 平台数据并生成SVG"
+      # - name: 数据下载并生成SVG图片
+      #   id: generate-svg
+      #   run: |
+      #     # 获取构建类型（手动触发优先，默认Strava）
+      #     APP_TYPE="${{ github.event.inputs.app_type || 'Strava' }}"
+      #     echo "📊 开始处理 ${APP_TYPE} 平台数据并生成SVG"
           
-          cd ${{ env.SRC_DIR }}
+      #     cd ${{ env.SRC_DIR }}
           
-          # 第一步：数据下载（不同平台执行对应脚本）
-          case $APP_TYPE in
-            Strava)
-              python3 run_page/strava_sync.py  ${{ secrets.STRAVA_CLIENT_ID }} \
-                 ${{ secrets.STRAVA_CLIENT_SECRET }} \
-                 ${{ secrets.STRAVA_REFRESH_TOKEN }}
-              ;;
-            NRC)
-              python3 run_page/nrc_download.py --nike_refresh_token ${{ secrets.NIKE_REFRESH_TOKEN }}
-              ;;
-            Garmin)
-              python3 run_page/garmin_download.py --secret_string ${{ secrets.GARMIN_SECRET_STRING }}
-              ;;
-            Garmin-CN)
-              python3 run_page/garmin_cn_download.py --secret_string ${{ secrets.GARMIN_CN_SECRET_STRING }}
-              ;;
-            Nike_to_Strava)
-              python3 run_page/nike_to_strava.py --nike_refresh_token ${{ secrets.NIKE_REFRESH_TOKEN }} \
-                --strava_client_id ${{ secrets.STRAVA_CLIENT_ID }} \
-                --strava_client_secret ${{ secrets.STRAVA_CLIENT_SECRET }} \
-                --strava_refresh_token ${{ secrets.STRAVA_REFRESH_TOKEN }}
-              ;;
-            Keep)
-              python3 run_page/keep_sync.py  ${{ secrets.KEEP_PHONE_NUMBER }} ${{ secrets.KEEP_PASSWORD }} --with-gpx
-              ;;
-            *)
-              echo "❌ 不支持的平台类型：${APP_TYPE}"
-              exit 1
-              ;;
-          esac
+      #     # 第一步：数据下载（不同平台执行对应脚本）
+      #     case $APP_TYPE in
+      #       Strava)
+      #         python3 run_page/strava_sync.py  ${{ secrets.STRAVA_CLIENT_ID }} \
+      #            ${{ secrets.STRAVA_CLIENT_SECRET }} \
+      #            ${{ secrets.STRAVA_REFRESH_TOKEN }}
+      #         ;;
+      #       NRC)
+      #         python3 run_page/nrc_download.py --nike_refresh_token ${{ secrets.NIKE_REFRESH_TOKEN }}
+      #         ;;
+      #       Garmin)
+      #         python3 run_page/garmin_download.py --secret_string ${{ secrets.GARMIN_SECRET_STRING }}
+      #         ;;
+      #       Garmin-CN)
+      #         python3 run_page/garmin_cn_download.py --secret_string ${{ secrets.GARMIN_CN_SECRET_STRING }}
+      #         ;;
+      #       Nike_to_Strava)
+      #         python3 run_page/nike_to_strava.py --nike_refresh_token ${{ secrets.NIKE_REFRESH_TOKEN }} \
+      #           --strava_client_id ${{ secrets.STRAVA_CLIENT_ID }} \
+      #           --strava_client_secret ${{ secrets.STRAVA_CLIENT_SECRET }} \
+      #           --strava_refresh_token ${{ secrets.STRAVA_REFRESH_TOKEN }}
+      #         ;;
+      #       Keep)
+      #         python3 run_page/keep_sync.py  ${{ secrets.KEEP_PHONE_NUMBER }} ${{ secrets.KEEP_PASSWORD }} --with-gpx
+      #         ;;
+      #       *)
+      #         echo "❌ 不支持的平台类型：${APP_TYPE}"
+      #         exit 1
+      #         ;;
+      #     esac
           
-          # 第二步：生成SVG图片（核心命令）
-          echo "🎨 开始生成SVG图片"
-          python3 run_page/gen_svg.py \
-            --from-db \
-            --title "${{ env.TITLE }}" \
-            --type github \
-            --athlete "${{ env.ATHLETE }}" \
-            --special-distance 10 \
-            --special-distance2 20 \
-            --special-color yellow \
-            --special-color2 red \
-            --output assets/github.svg \
-            --use-localtime \
-            --min-distance 0.5
+      #     # 第二步：生成SVG图片（核心命令）
+      #     echo "🎨 开始生成SVG图片"
+      #     python3 run_page/gen_svg.py \
+      #       --from-db \
+      #       --title "${{ env.TITLE }}" \
+      #       --type github \
+      #       --athlete "${{ env.ATHLETE }}" \
+      #       --special-distance 10 \
+      #       --special-distance2 20 \
+      #       --special-color yellow \
+      #       --special-color2 red \
+      #       --output assets/github.svg \
+      #       --use-localtime \
+      #       --min-distance 0.5
           
-          # 验证SVG文件是否生成
-          if [ ! -f assets/github.svg ]; then
-            echo "❌ SVG图片生成失败，未找到assets/github.svg"
-            exit 1
-          fi
-          echo "✅ SVG图片生成成功，路径：${{ env.SRC_DIR }}/assets/github.svg"
+      #     # 验证SVG文件是否生成
+      #     if [ ! -f assets/github.svg ]; then
+      #       echo "❌ SVG图片生成失败，未找到assets/github.svg"
+      #       exit 1
+      #     fi
+      #     echo "✅ SVG图片生成成功，路径：${{ env.SRC_DIR }}/assets/github.svg"
 
       - name: 设置Docker Buildx
         uses: docker/setup-buildx-action@v3
