@@ -54,12 +54,20 @@ jobs:
             exit 1
           fi
           echo "✅ 源码克隆完成，Dockerfile存在"
+          echo "📥 开始修改自定义距离"
           sed -i \
             -e '/gen_svg.py/ s/--min-distance [0-9.]\+/--min-distance ${{ secrets.DIS1 }}/g' \
             -e '/gen_svg.py/ s/--special-distance [0-9]\+/--special-distance ${{ secrets.DIS2 }}/g' \
             -e '/gen_svg.py/ s/--special-distance2 [0-9]\+/--special-distance2 ${{ secrets.DIS3 }}/g' \
           Dockerfile
+          echo "✅ 自定义距离修改完成"
+          echo "📥 开始替换mapboxtoken"
+          sed -i \
+            -e '/const MAPBOX_TOKEN =/ s/\'[^']*\'/\'${{ secrets.MAPBOX }}\'/g' \
+          ./src/utils/const.ts
+          echo "✅ mapboxtoken替换完成"
 
+        
       - name: 安装Python依赖（用于生成SVG）
         run: |
           echo "📦 安装Python及依赖包"
