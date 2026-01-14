@@ -20,6 +20,10 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    # 定义环境变量中转Secret（关键：解决if中无法直接用secrets的问题）
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       # 1. 拉取仓库源码
       - name: 检出代码
@@ -79,16 +83,18 @@ jobs:
       - name: 登录Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-        if: success() && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+        # 修复：if中判断环境变量（而非直接判断secrets）
+        if: success() && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
 
       - name: 推送镜像到Docker Hub
         run: |
-          echo "📤 推送镜像到 Docker Hub：${{ secrets.DOCKERHUB_USERNAME }}/running_page:latest"
-          docker tag running_page:${{ github.sha }} ${{ secrets.DOCKERHUB_USERNAME }}/running_page:latest
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/running_page:latest
-        if: success() && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
+          echo "📤 推送镜像到 Docker Hub：${{ env.DOCKERHUB_USERNAME }}/running_page:latest"
+          docker tag running_page:${{ github.sha }} ${{ env.DOCKERHUB_USERNAME }}/running_page:latest
+          docker push ${{ env.DOCKERHUB_USERNAME }}/running_page:latest
+        # 修复：if中判断环境变量
+        if: success() && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
 
       # 5. 推送到GitHub Packages（可选）
       - name: 登录GitHub Packages
