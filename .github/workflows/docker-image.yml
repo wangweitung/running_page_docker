@@ -48,6 +48,7 @@ jobs:
           git clone ${{ env.RUNNING_PAGE_REPO }} ${{ env.SRC_DIR }}
           # 进入源码目录，确认Dockerfile存在
           cd ${{ env.SRC_DIR }}
+          rm -rf ./assets/*
           if [ ! -f Dockerfile ]; then
             echo "❌ 源码目录中未找到Dockerfile"
             exit 1
@@ -105,8 +106,6 @@ jobs:
           
           # 第二步：生成SVG图片（核心命令）
           echo "🎨 开始生成SVG图片"
-          #rm -rf ${{ env.SRC_DIR }}/assets/*.svg
-          rm -rf ${{ env.SRC_DIR }}/assets/*
           python3 run_page/gen_svg.py \
             --from-db \
             --title "${{ env.TITLE }}" \
