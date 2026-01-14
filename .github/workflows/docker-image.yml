@@ -48,7 +48,7 @@ jobs:
           git clone ${{ env.RUNNING_PAGE_REPO }} ${{ env.SRC_DIR }}
           # 进入源码目录，确认Dockerfile存在
           cd ${{ env.SRC_DIR }}
-          rm -rf ./assets/*
+          find ./assets -name '*[0-9]*' -exec rm -rf {} +
           if [ ! -f Dockerfile ]; then
             echo "❌ 源码目录中未找到Dockerfile"
             exit 1
