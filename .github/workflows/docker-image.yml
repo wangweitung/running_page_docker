@@ -95,8 +95,7 @@ jobs:
                 --strava_refresh_token ${{ secrets.STRAVA_REFRESH_TOKEN }}
               ;;
             Keep)
-              python3 run_page/keep_sync.py --phone_number ${{ secrets.KEEP_PHONE_NUMBER }} \
-                --password ${{ secrets.KEEP_PASSWORD }}
+              python3 run_page/keep_sync.py  ${{ secrets.KEEP_PHONE_NUMBER }} ${{ secrets.KEEP_PASSWORD }} --with-gpx
               ;;
             *)
               echo "❌ 不支持的平台类型：${APP_TYPE}"
