@@ -84,7 +84,7 @@ jobs:
             -e "s|siteTitle: 'Running Page'|siteTitle: '${{ secrets.SITEtitle }}'|g" \
             -e "s|siteUrl: 'https://yihong.run'|siteUrl: '${{ secrets.SITEurl }}'|g" \
             -e "s|description: 'Personal site and blog'|description: '${{ secrets.SITEdescription }}'|g" \
-            -e "s|url: 'https://yihong.run/running'|url: '${{ secrets.BLOGurl }}'|g" \
+            -e "s|url: 'https://github.com/yihong0618/gitblog'|url: '${{ secrets.BLOGurl }}'|g" \
             -e "s|url: 'https://github.com/yihong0618/running_page/blob/master/README-CN.md'|url: '${{ secrets.ABOUTurl }}'|g" \
           "$SITE_METADATA_FILE"
           echo "✅ site-metadata.ts 站点配置替换完成"
