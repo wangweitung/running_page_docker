@@ -105,6 +105,8 @@ jobs:
           
           # 第二步：生成SVG图片（核心命令）
           echo "🎨 开始生成SVG图片"
+          #rm -rf ${{ env.SRC_DIR }}/assets/*.svg
+          rm -rf ${{ env.SRC_DIR }}/assets/*
           python3 run_page/gen_svg.py \
             --from-db \
             --title "${{ env.TITLE }}" \
