@@ -8,7 +8,7 @@ on:
       app_type:
         description: '要构建的平台类型（NRC/Garmin/Garmin-CN/Strava/Nike_to_Strava/Keep）'
         required: true
-        default: 'Keep'
+        default: 'Strava'
 
 permissions:
   contents: read
@@ -26,8 +26,8 @@ jobs:
       # 源码克隆后的目录
       SRC_DIR: ./running_page_src
       # SVG生成参数（建议在GitHub Secrets中配置）
-      TITLE: ${{ secrets.RUNNING_PAGE_TITLE || 'My Running Page' }}
-      ATHLETE: ${{ secrets.RUNNING_PAGE_ATHLETE || 'Runner' }}
+      #TITLE: ${{ secrets.RUNNING_PAGE_TITLE || 'My Running Page' }}
+      #ATHLETE: ${{ secrets.RUNNING_PAGE_ATHLETE || 'Runner' }}
 
     steps:
       - name: 生成时间戳（年月日时分秒）
@@ -102,8 +102,8 @@ jobs:
       - name: 数据下载并生成SVG图片
         id: generate-svg
         run: |
-          # 获取构建类型（手动触发优先，默认Keep）
-          APP_TYPE="${{ github.event.inputs.app_type || 'Keep' }}"
+          # 获取构建类型（手动触发优先，默认Strava）
+          APP_TYPE="${{ github.event.inputs.app_type || 'Strava' }}"
           echo "📊 开始处理 ${APP_TYPE} 平台数据并生成SVG"
           
           cd ${{ env.SRC_DIR }}
@@ -111,7 +111,7 @@ jobs:
           # 第一步：数据下载（不同平台执行对应脚本）
           case $APP_TYPE in
             Strava)
-              python3 run_page/strava_download.py --client_id ${{ secrets.STRAVA_CLIENT_ID }} \
+              python3 run_page/strava_sync.py --client_id ${{ secrets.STRAVA_CLIENT_ID }} \
                 --client_secret ${{ secrets.STRAVA_CLIENT_SECRET }} \
                 --refresh_token ${{ secrets.STRAVA_REFRESH_TOKEN }}
               ;;
@@ -172,8 +172,8 @@ jobs:
       - name: 构建Docker镜像
         id: build-image
         run: |
-          # 获取构建类型（手动触发优先，默认Keep）
-          APP_TYPE="${{ github.event.inputs.app_type || 'Keep' }}"
+          # 获取构建类型（手动触发优先，默Strava）
+          APP_TYPE="${{ github.event.inputs.app_type || 'Strava' }}"
           echo "🔨 开始构建 ${APP_TYPE} 平台镜像，架构：linux/amd64"
           
           # 进入源码目录执行构建
@@ -236,9 +236,9 @@ jobs:
         run: |
           # 引用环境变量中的时间戳
           TS=${{ env.IMAGE_TAG_TIMESTAMP }}
-          APP_TYPE="${{ github.event.inputs.app_type || 'Keep' }}"
-          TAG_LATEST="${{ env.DOCKERHUB_USERNAME }}/running_page:latest"
-          TAG_APP="${{ env.DOCKERHUB_USERNAME }}/running_page:${APP_TYPE}-${TS}"
+          APP_TYPE="${{ github.event.inputs.app_type || 'Strava' }}"
+          TAG_LATEST="${{ env.DOCKERHUB_USERNAME }}/running_page_${{ github.event.inputs.app_type || 'Strava' }}:latest"
+          TAG_APP="${{ env.DOCKERHUB_USERNAME }}/running_page_${{ github.event.inputs.app_type || 'Strava' }}:${APP_TYPE}-${TS}"
           
           echo "📤 推送镜像到 Docker Hub：${TAG_LATEST}"
           docker tag running_page:${TS} $TAG_LATEST
