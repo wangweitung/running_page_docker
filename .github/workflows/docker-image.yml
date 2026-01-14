@@ -25,8 +25,17 @@ jobs:
       RUNNING_PAGE_REPO: https://github.com/yihong0618/running_page
       # 源码克隆后的目录
       SRC_DIR: ./running_page_src
+      # 生成年月日时分秒格式的时间戳（UTC时间，也可改用本地时间：date +%Y%m%d%H%M%S）
+      IMAGE_TAG_TIMESTAMP: ${{ github.run_id }}-${{ steps.timestamp.outputs.ts }}
 
     steps:
+      - name: 生成时间戳（年月日时分秒）
+        id: timestamp
+        run: |
+          # 生成格式：20240520143025（年-月-日-时-分-秒）
+          TS=$(date -u +%Y%m%d%H%M%S)
+          echo "ts=$TS" >> $GITHUB_OUTPUT
+
       - name: 检出当前仓库代码
         uses: actions/checkout@v4
 
@@ -100,8 +109,8 @@ jobs:
               ;;
           esac
           
-          # 构建镜像（单架构直接load到本地）
-          docker buildx build -t running_page:${{ github.sha }} \
+          # 构建镜像（单架构直接load到本地）：替换github.sha为时间戳
+          docker buildx build -t running_page:${{ steps.timestamp.outputs.ts }} \
             --platform linux/amd64 \
             $BUILD_ARGS \
             --load .
@@ -115,16 +124,18 @@ jobs:
 
       - name: 推送镜像到Docker Hub
         run: |
-          # 增加APP_TYPE标签，方便区分不同平台镜像
+          # 替换github.sha为时间戳，增加平台标签
+          TS=${{ steps.timestamp.outputs.ts }}
+          APP_TYPE="${{ github.event.inputs.app_type || 'Keep' }}"
           TAG_LATEST="${{ env.DOCKERHUB_USERNAME }}/running_page:latest"
-          TAG_APP="${{ env.DOCKERHUB_USERNAME }}/running_page:${{ github.event.inputs.app_type || 'Keep' }}-${{ github.sha }}"
+          TAG_APP="${{ env.DOCKERHUB_USERNAME }}/running_page:${APP_TYPE}-${TS}"
           
           echo "📤 推送镜像到 Docker Hub：${TAG_LATEST}"
-          docker tag running_page:${{ github.sha }} $TAG_LATEST
+          docker tag running_page:${TS} $TAG_LATEST
           docker push $TAG_LATEST
           
           echo "📤 推送平台专属镜像：${TAG_APP}"
-          docker tag running_page:${{ github.sha }} $TAG_APP
+          docker tag running_page:${TS} $TAG_APP
           docker push $TAG_APP
         if: success() && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
 
@@ -138,15 +149,17 @@ jobs:
 
       - name: 推送镜像到GitHub Packages
         run: |
-          # 同样增加平台标签
+          # 替换github.sha为时间戳，增加平台标签
+          TS=${{ steps.timestamp.outputs.ts }}
+          APP_TYPE="${{ github.event.inputs.app_type || 'Keep' }}"
           TAG_LATEST="ghcr.io/${{ github.repository_owner }}/running_page:latest"
-          TAG_APP="ghcr.io/${{ github.repository_owner }}/running_page:${{ github.event.inputs.app_type || 'Keep' }}-${{ github.sha }}"
+          TAG_APP="ghcr.io/${{ github.repository_owner }}/running_page:${APP_TYPE}-${TS}"
           
           echo "📤 推送镜像到 GitHub Packages：${TAG_LATEST}"
-          docker tag running_page:${{ github.sha }} $TAG_LATEST
+          docker tag running_page:${TS} $TAG_LATEST
           docker push $TAG_LATEST
           
           echo "📤 推送平台专属镜像：${TAG_APP}"
-          docker tag running_page:${{ github.sha }} $TAG_APP
+          docker tag running_page:${TS} $TAG_APP
           docker push $TAG_APP
         if: success()
