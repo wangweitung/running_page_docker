@@ -1,0 +1,166 @@
+name: Daily Check and Build
+
+on:
+  schedule:
+    # 每天 UTC 时间 00:00 检查（北京时间 08:00）
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: '强制构建'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  check-and-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Check for updates
+      id: check_updates
+      run: |
+        # 获取目标仓库的最新提交
+        echo "正在检查 yihong0618/running_page 仓库更新..."
+        LATEST_COMMIT=$(curl -s -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/yihong0618/running_page/commits/main | \
+          jq -r '.sha')
+        
+        # 读取本地存储的上次构建的commit
+        if [ -f "last_build_commit.txt" ]; then
+          LAST_COMMIT=$(cat last_build_commit.txt)
+          echo "上次构建的commit: ${LAST_COMMIT:0:8}"
+        else
+          LAST_COMMIT=""
+          echo "这是第一次构建"
+        fi
+        
+        echo "最新的commit: ${LATEST_COMMIT:0:8}"
+        
+        # 检查是否需要强制构建
+        FORCE_BUILD="${{ github.event.inputs.force_build }}"
+        
+        if [ "$FORCE_BUILD" = "true" ]; then
+          echo "🧪 强制构建模式"
+          echo "should_build=true" >> $GITHUB_OUTPUT
+          echo "build_reason=forced" >> $GITHUB_OUTPUT
+        elif [ "$LAST_COMMIT" != "$LATEST_COMMIT" ] || [ -z "$LAST_COMMIT" ]; then
+          echo "🎉 发现新版本，需要构建"
+          echo "should_build=true" >> $GITHUB_OUTPUT
+          echo "build_reason=new_commit" >> $GITHUB_OUTPUT
+        else
+          echo "✅ 没有更新，跳过构建"
+          echo "should_build=false" >> $GITHUB_OUTPUT
+        fi
+        
+        # 保存新的commit
+        echo "$LATEST_COMMIT" > last_build_commit.txt
+        echo "latest_commit=$LATEST_COMMIT" >> $GITHUB_ENV
+
+    - name: Build and push Docker image
+      if: steps.check_updates.outputs.should_build == 'true'
+      run: |
+        # 获取当前日期作为标签
+        DATE_TAG=$(date +'%Y%m%d')
+        echo "📦 开始构建 Docker 镜像..."
+        echo "标签: ${{ secrets.DOCKERHUB_USERNAME }}/running-page:$DATE_TAG"
+        
+        # 克隆目标仓库
+        echo "克隆 running_page 仓库..."
+        git clone --depth 1 https://github.com/yihong0618/running_page.git source-repo
+        
+        # 创建 Dockerfile
+        echo "创建 Dockerfile..."
+        cat > Dockerfile << 'EOF'
+        # 第一阶段：构建
+        FROM node:18-alpine AS builder
+
+        WORKDIR /app
+
+        # 复制 package.json 并安装依赖
+        COPY source-repo/package*.json ./
+        RUN npm ci
+
+        # 复制源代码
+        COPY source-repo/ .
+
+        # 安装依赖并构建
+        RUN npm run build
+
+        # 第二阶段：运行
+        FROM node:18-alpine
+
+        WORKDIR /app
+
+        # 安装 serve 来提供静态文件
+        RUN npm install -g serve
+
+        # 从构建阶段复制构建产物
+        COPY --from=builder /app/public ./public
+        COPY --from=builder /app/.next/static ./.next/static
+
+        # 暴露端口
+        EXPOSE 3000
+
+        # 启动服务
+        CMD ["serve", "-s", "public", "-l", "3000"]
+        EOF
+        
+        # 查看 Dockerfile 内容
+        echo "=== Dockerfile 内容 ==="
+        cat Dockerfile
+        echo "======================"
+        
+        # 构建镜像
+        echo "开始构建镜像..."
+        docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          -t ${{ secrets.DOCKERHUB_USERNAME }}/running-page:$DATE_TAG \
+          -t ${{ secrets.DOCKERHUB_USERNAME }}/running-page:latest \
+          --push \
+          .
+        
+        echo "✅ 镜像构建并推送完成！"
+
+    - name: Commit and push changes
+      if: steps.check_updates.outputs.should_build == 'true'
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        
+        # 提交更改
+        if [ -n "$(git status --porcelain)" ]; then
+          git add last_build_commit.txt
+          git commit -m "chore: update last build commit to ${{ env.latest_commit }}"
+          git push
+          echo "✅ 提交了新的构建记录"
+        else
+          echo "⚠️ 没有需要提交的更改"
+        fi
+
+    - name: Notification summary
+      if: always()
+      run: |
+        echo "=== 构建总结 ==="
+        echo "构建状态: ${{ job.status }}"
+        if [ "${{ steps.check_updates.outputs.should_build }}" = "true" ]; then
+          echo "构建原因: ${{ steps.check_updates.outputs.build_reason }}"
+          echo "镜像标签: ${{ secrets.DOCKERHUB_USERNAME }}/running-page:latest"
+          echo "日期标签: ${{ secrets.DOCKERHUB_USERNAME }}/running-page:$(date +'%Y%m%d')"
+        else
+          echo "本次未构建"
+        fi
