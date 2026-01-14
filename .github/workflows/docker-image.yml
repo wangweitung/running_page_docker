@@ -237,8 +237,8 @@ jobs:
           # 引用环境变量中的时间戳
           TS=${{ env.IMAGE_TAG_TIMESTAMP }}
           APP_TYPE="${{ github.event.inputs.app_type || 'Strava' }}"
-          TAG_LATEST="${{ env.DOCKERHUB_USERNAME }}/running_page_${{ github.event.inputs.app_type || 'Strava' }}:latest"
-          TAG_APP="${{ env.DOCKERHUB_USERNAME }}/running_page_${{ github.event.inputs.app_type || 'Strava' }}:${APP_TYPE}-${TS}"
+          TAG_LATEST="${{ env.DOCKERHUB_USERNAME }}/running_page:latest"
+          TAG_APP="${{ env.DOCKERHUB_USERNAME }}/running_page:${APP_TYPE}-${TS}"
           
           echo "📤 推送镜像到 Docker Hub：${TAG_LATEST}"
           docker tag running_page:${TS} $TAG_LATEST
