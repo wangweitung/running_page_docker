@@ -111,9 +111,9 @@ jobs:
           # 第一步：数据下载（不同平台执行对应脚本）
           case $APP_TYPE in
             Strava)
-              python3 run_page/strava_sync.py --client_id ${{ secrets.STRAVA_CLIENT_ID }} \
-                --client_secret ${{ secrets.STRAVA_CLIENT_SECRET }} \
-                --refresh_token ${{ secrets.STRAVA_REFRESH_TOKEN }}
+              python3 run_page/strava_sync.py client_id ${{ secrets.STRAVA_CLIENT_ID }} \
+                 ${{ secrets.STRAVA_CLIENT_SECRET }} \
+                 ${{ secrets.STRAVA_REFRESH_TOKEN }}
               ;;
             NRC)
               python3 run_page/nrc_download.py --nike_refresh_token ${{ secrets.NIKE_REFRESH_TOKEN }}
