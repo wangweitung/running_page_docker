@@ -61,9 +61,10 @@ jobs:
             -e '/gen_svg.py/ s/--special-distance2 [0-9]\+/--special-distance2 ${{ secrets.DIS3 }}/g' \
           Dockerfile
           echo "✅ 自定义距离修改完成"
+          cd ${{ env.SRC_DIR }}
           echo "📥 开始替换mapboxtoken"
           sed -i \
-            -e '/const MAPBOX_TOKEN =/ s/\'[^']*\'/\'${{ secrets.MAPBOX }}\'/g' \
+            -e "/const MAPBOX_TOKEN =/ s/'\''[^']*'\''/'\''${{ secrets.MAPBOX }}'\''/g" \
           ./src/utils/const.ts
           echo "✅ mapboxtoken替换完成"
 
