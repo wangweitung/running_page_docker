@@ -1,6 +1,5 @@
 name: 自动化构建 Running Page Docker 镜像
 
-# 触发条件：1. 推送到main分支 2. 手动触发
 on:
   push:
     branches: [ main ]
@@ -11,81 +10,86 @@ on:
         required: true
         default: 'Strava'
 
-# 配置权限
 permissions:
   contents: read
-  packages: write # 推送到GitHub Packages需要
-  id-token: write # 可选，增强安全性
+  packages: write
+  id-token: write
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    # 定义环境变量中转Secret（关键：解决if中无法直接用secrets的问题）
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      # 新增：指定Buildx构建器（替代install参数）
+      BUILDX_BUILDER: multi-arch-builder
     steps:
-      # 1. 拉取仓库源码
       - name: 检出代码
         uses: actions/checkout@v4
 
-      # 2. 设置Docker Buildx（支持多架构构建）
+      # 修复：移除废弃的install参数，改用预创建构建器
       - name: 设置Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          install: true # 确保安装最新版buildx
-          driver-opts: network=host # 优化网络
+          driver: docker-container # 显式指定容器驱动（更稳定）
+          driver-opts: network=host
+          # 预创建多架构构建器（替代手动create）
+          buildkitd-flags: --debug
+          platforms: linux/amd64,linux/arm64 # 预设支持的架构
 
-      # 3. 构建Docker镜像（兼容自动/手动触发，多架构）
-      - name: 构建镜像
+      # 修复构建步骤：移除手动create构建器，直接使用预设的BUILDX_BUILDER
+      - name: 构建Docker镜像
         id: build-image
         run: |
-          # 兼容自动触发（push）和手动触发的app_type
           APP_TYPE="${{ github.event.inputs.app_type || 'Strava' }}"
           echo "🔨 开始构建 ${APP_TYPE} 平台镜像，架构：linux/amd64,linux/arm64"
           
-          # 创建并使用buildx构建器
-          docker buildx create --use --name=multi-arch-builder --driver docker-container
+          # 无需手动create构建器（setup-buildx-action已自动创建）
+          # 直接使用BUILDX_BUILDER环境变量指定的构建器
+          docker buildx use $BUILDX_BUILDER
           
-          # 按平台类型构建
-          if [ "$APP_TYPE" = "Strava" ]; then
-            docker buildx build -t running_page:${{ github.sha }} \
-              --platform linux/amd64,linux/arm64 \
-              --build-arg app=Strava \
-              --build-arg client_id="${{ secrets.STRAVA_CLIENT_ID }}" \
-              --build-arg client_secret="${{ secrets.STRAVA_CLIENT_SECRET }}" \
-              --build-arg refresh_token="${{ secrets.STRAVA_REFRESH_TOKEN }}" \
-              --load .
-          elif [ "$APP_TYPE" = "NRC" ]; then
-            docker buildx build -t running_page:${{ github.sha }} \
-              --platform linux/amd64,linux/arm64 \
-              --build-arg app=NRC \
-              --build-arg nike_refresh_token="${{ secrets.NIKE_REFRESH_TOKEN }}" \
-              --load .
-          elif [ "$APP_TYPE" = "Garmin" ]; then
-            docker buildx build -t running_page:${{ github.sha }} \
-              --platform linux/amd64,linux/arm64 \
-              --build-arg app=Garmin \
-              --build-arg secret_string="${{ secrets.GARMIN_SECRET_STRING }}" \
-              --load .
-          elif [ "$APP_TYPE" = "Keep" ]; then
-            docker buildx build -t running_page:${{ github.sha }} \
-              --platform linux/amd64,linux/arm64 \
-              --build-arg app=Keep \
-              --build-arg keep_cookie="${{ secrets.KEEP_COOKIE }}" \
-              --load .
-          else
-            echo "❌ 不支持的平台类型：${APP_TYPE}"
-            exit 1
-          fi
+          # 统一构建逻辑（简化重复代码）
+          BUILD_ARGS=""
+          case $APP_TYPE in
+            Strava)
+              BUILD_ARGS="--build-arg app=Strava \
+                --build-arg client_id=${{ secrets.STRAVA_CLIENT_ID }} \
+                --build-arg client_secret=${{ secrets.STRAVA_CLIENT_SECRET }} \
+                --build-arg refresh_token=${{ secrets.STRAVA_REFRESH_TOKEN }}"
+              ;;
+            NRC)
+              BUILD_ARGS="--build-arg app=NRC \
+                --build-arg nike_refresh_token=${{ secrets.NIKE_REFRESH_TOKEN }}"
+              ;;
+            Garmin)
+              BUILD_ARGS="--build-arg app=Garmin \
+                --build-arg secret_string=${{ secrets.GARMIN_SECRET_STRING }}"
+              ;;
+            Keep)
+              BUILD_ARGS="--build-arg app=Keep \
+                --build-arg keep_cookie=${{ secrets.KEEP_COOKIE }}"
+              ;;
+            *)
+              echo "❌ 不支持的平台类型：${APP_TYPE}"
+              exit 1
+              ;;
+          esac
+          
+          # 执行多架构构建（--load仅支持单架构，改用--push到本地registry或直接推送）
+          # 注意：--load无法同时加载多架构，若需本地测试可拆分架构，或直接推送仓库
+          docker buildx build -t running_page:${{ github.sha }} \
+            --platform linux/amd64,linux/arm64 \
+            $BUILD_ARGS \
+            --output type=docker,dest=/tmp/running_page.tar .
+          
+          # 导入镜像到本地Docker（兼容多架构）
+          docker load < /tmp/running_page.tar
 
-      # 4. 推送到Docker Hub（可选）
       - name: 登录Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_TOKEN }}
-        # 修复：if中判断环境变量（而非直接判断secrets）
         if: success() && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
 
       - name: 推送镜像到Docker Hub
@@ -93,10 +97,8 @@ jobs:
           echo "📤 推送镜像到 Docker Hub：${{ env.DOCKERHUB_USERNAME }}/running_page:latest"
           docker tag running_page:${{ github.sha }} ${{ env.DOCKERHUB_USERNAME }}/running_page:latest
           docker push ${{ env.DOCKERHUB_USERNAME }}/running_page:latest
-        # 修复：if中判断环境变量
         if: success() && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
 
-      # 5. 推送到GitHub Packages（可选）
       - name: 登录GitHub Packages
         uses: docker/login-action@v3
         with:
