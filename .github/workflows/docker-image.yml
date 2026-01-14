@@ -25,6 +25,9 @@ jobs:
       RUNNING_PAGE_REPO: https://github.com/yihong0618/running_page
       # 源码克隆后的目录
       SRC_DIR: ./running_page_src
+      # SVG生成参数（建议在GitHub Secrets中配置）
+      TITLE: ${{ secrets.RUNNING_PAGE_TITLE || 'My Running Page' }}
+      ATHLETE: ${{ secrets.RUNNING_PAGE_ATHLETE || 'Runner' }}
 
     steps:
       - name: 生成时间戳（年月日时分秒）
@@ -51,6 +54,78 @@ jobs:
           fi
           echo "✅ 源码克隆完成，Dockerfile存在"
 
+      - name: 安装Python依赖（用于生成SVG）
+        run: |
+          echo "📦 安装Python及依赖包"
+          sudo apt update && sudo apt install -y python3 python3-pip python3-venv
+          cd ${{ env.SRC_DIR }}
+          # 安装running_page依赖
+          pip3 install -r requirements.txt --user
+          echo "✅ Python依赖安装完成"
+
+      - name: 数据下载并生成SVG图片
+        id: generate-svg
+        run: |
+          # 获取构建类型（手动触发优先，默认Keep）
+          APP_TYPE="${{ github.event.inputs.app_type || 'Keep' }}"
+          echo "📊 开始处理 ${APP_TYPE} 平台数据并生成SVG"
+          
+          cd ${{ env.SRC_DIR }}
+          
+          # 第一步：数据下载（不同平台执行对应脚本）
+          case $APP_TYPE in
+            Strava)
+              python3 run_page/strava_download.py --client_id ${{ secrets.STRAVA_CLIENT_ID }} \
+                --client_secret ${{ secrets.STRAVA_CLIENT_SECRET }} \
+                --refresh_token ${{ secrets.STRAVA_REFRESH_TOKEN }}
+              ;;
+            NRC)
+              python3 run_page/nrc_download.py --nike_refresh_token ${{ secrets.NIKE_REFRESH_TOKEN }}
+              ;;
+            Garmin)
+              python3 run_page/garmin_download.py --secret_string ${{ secrets.GARMIN_SECRET_STRING }}
+              ;;
+            Garmin-CN)
+              python3 run_page/garmin_cn_download.py --secret_string ${{ secrets.GARMIN_CN_SECRET_STRING }}
+              ;;
+            Nike_to_Strava)
+              python3 run_page/nike_to_strava.py --nike_refresh_token ${{ secrets.NIKE_REFRESH_TOKEN }} \
+                --strava_client_id ${{ secrets.STRAVA_CLIENT_ID }} \
+                --strava_client_secret ${{ secrets.STRAVA_CLIENT_SECRET }} \
+                --strava_refresh_token ${{ secrets.STRAVA_REFRESH_TOKEN }}
+              ;;
+            Keep)
+              python3 run_page/keep_download.py --phone_number ${{ secrets.KEEP_PHONE_NUMBER }} \
+                --password ${{ secrets.KEEP_PASSWORD }}
+              ;;
+            *)
+              echo "❌ 不支持的平台类型：${APP_TYPE}"
+              exit 1
+              ;;
+          esac
+          
+          # 第二步：生成SVG图片（核心命令）
+          echo "🎨 开始生成SVG图片"
+          python3 run_page/gen_svg.py \
+            --from-db \
+            --title "${{ env.TITLE }}" \
+            --type github \
+            --athlete "${{ env.ATHLETE }}" \
+            --special-distance 10 \
+            --special-distance2 20 \
+            --special-color yellow \
+            --special-color2 red \
+            --output assets/github.svg \
+            --use-localtime \
+            --min-distance 0.5
+          
+          # 验证SVG文件是否生成
+          if [ ! -f assets/github.svg ]; then
+            echo "❌ SVG图片生成失败，未找到assets/github.svg"
+            exit 1
+          fi
+          echo "✅ SVG图片生成成功，路径：${{ env.SRC_DIR }}/assets/github.svg"
+
       - name: 设置Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
@@ -69,7 +144,7 @@ jobs:
           # 进入源码目录执行构建
           cd ${{ env.SRC_DIR }}
           
-          # 初始化构建参数
+          # 初始化构建参数（保留原逻辑，确保镜像内配置正确）
           BUILD_ARGS=""
           case $APP_TYPE in
             Strava)
@@ -98,7 +173,6 @@ jobs:
                 --build-arg strava_refresh_token=${{ secrets.STRAVA_REFRESH_TOKEN }}"
               ;;
             Keep)
-              # 适配你要求的keep_phone_number和keep_password参数
               BUILD_ARGS="--build-arg app=Keep \
                 --build-arg keep_phone_number=${{ secrets.KEEP_PHONE_NUMBER }} \
                 --build-arg keep_password=${{ secrets.KEEP_PASSWORD }}"
@@ -109,7 +183,7 @@ jobs:
               ;;
           esac
           
-          # 构建镜像（单架构直接load到本地）：使用环境变量中的时间戳
+          # 构建镜像（包含生成的SVG文件）：使用环境变量中的时间戳
           docker buildx build -t running_page:${{ env.IMAGE_TAG_TIMESTAMP }} \
             --platform linux/amd64 \
             $BUILD_ARGS \
