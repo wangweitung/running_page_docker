@@ -69,30 +69,28 @@ jobs:
 
           echo "📥 开始加入生成monthoflife svg代码"
 
-          # awk处理多行替换，无分隔符冲突，无未终止命令风险
+          echo "📥 开始加入生成monthoflife svg代码并补全续行斜杠"
+
           awk '
-          # 匹配目标行的起始（避免分隔符冲突）
           /RUN python3 run_page\/gen_svg.py --from-db --title "my running page" --type grid/ {
-              # 打印第一行原内容
-              print $0;
-              # 读取并打印第二行（github类型）
-              getline; print $0;
-              # 读取并打印第三行（circular类型）
-              getline; print $0;
-              # 新增monthoflife行（直接构造，无分隔符冲突）
+              print $0;  # 打印第一行（grid类型）
+              getline; print $0;  # 打印第二行（github类型）
+              getline; 
+              # 关键：在circular行末尾添加续行斜杠（\），再打印
+              print $0 " \\";  
+              # 新增monthoflife行（无需续行，因为是最后一行）
               print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-distance 10 --special-distance2 20 --special-color '\''#f9d367'\'' --special-color2 '\''#f0a1a8'\'' --output assets/mol.svg --use-localtime --athlete yihong0618 --title '\''Runner Month of Life'\''";
               next;
           }
-          # 非目标内容原样输出
           1
           ' Dockerfile > Dockerfile.tmp
 
-          # 替换原文件（备份旧文件）
+          # 替换原文件
           mv Dockerfile Dockerfile.old
           mv Dockerfile.tmp Dockerfile
 
-          echo "✅ 加入生成monthoflife svg代码完成"
-          cat Dockerfile
+          echo "✅ 新增monthoflife代码+补全续行斜杠完成"
+          cat Dockerfile | grep "circular --use-localtime"
 
           echo "📥 开始修改自定义距离、出生年月和运动员名称"
           # 注释移到命令外部，清晰说明每个替换规则
