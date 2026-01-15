@@ -8,7 +8,7 @@ on:
       app_type:
         description: '要构建的平台类型（NRC/Garmin/Garmin-CN/Strava/Nike_to_Strava/Keep）'
         required: true
-        default: 'Strava'
+        default: 'Keep'
   # 新增：定时触发器（每天东八区8:00运行，对应UTC 0:00）
   schedule:
     - cron: '0 0 * * *'
@@ -125,8 +125,8 @@ jobs:
       - name: 构建Docker镜像
         id: build-image
         run: |
-          # 获取构建类型（手动触发优先，默Strava）
-          APP_TYPE="${{ github.event.inputs.app_type || 'Strava' }}"
+          # 获取构建类型（手动触发优先，默Keep）
+          APP_TYPE="${{ github.event.inputs.app_type || 'Keep' }}"
           echo "🔨 开始构建 ${APP_TYPE} 平台镜像，架构：linux/amd64"
           
           # 进入源码目录执行构建
@@ -199,7 +199,7 @@ jobs:
         run: |
           # 引用环境变量中的时间戳
           TS=${{ env.IMAGE_TAG_TIMESTAMP }}
-          APP_TYPE="${{ github.event.inputs.app_type || 'Strava' }}"
+          APP_TYPE="${{ github.event.inputs.app_type || 'Keep' }}"
           TAG_LATEST="${{ env.DOCKERHUB_USERNAME }}/running_page:latest"
           TAG_APP="${{ env.DOCKERHUB_USERNAME }}/running_page:${APP_TYPE}-${TS}"
           
@@ -224,7 +224,7 @@ jobs:
         run: |
           # 引用环境变量中的时间戳
           TS=${{ env.IMAGE_TAG_TIMESTAMP }}
-          APP_TYPE="${{ github.event.inputs.app_type || 'Strava' }}"
+          APP_TYPE="${{ github.event.inputs.app_type || 'Keep' }}"
           TAG_LATEST="ghcr.io/${{ github.repository_owner }}/running_page:latest"
           TAG_APP="ghcr.io/${{ github.repository_owner }}/running_page:${APP_TYPE}-${TS}"
           
