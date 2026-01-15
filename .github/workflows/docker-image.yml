@@ -8,7 +8,7 @@ on:
       app_type:
         description: '要构建的平台类型（NRC/Garmin/Garmin-CN/Strava/Nike_to_Strava/Keep）'
         required: true
-        default: 'Strava'
+        default: 'Keep'
   # 新增：定时触发器（每天东八区8:00运行，对应UTC 0:00）
   schedule:
     - cron: '0 0 * * *'
@@ -72,7 +72,9 @@ jobs:
           sed -i 's/\(python3 run_page\/keep_sync.py ${keep_phone_number} ${keep_password}\);/\1 --with-gpx;/' Dockerfile
           echo "✅ 修改keep构建命令完成"
 
-          echo "📥 开始加入生成monthoflife svg代码并补全续行斜杠"
+        
+
+          echo "📥 开始加入生成monthoflife svg代码、year_summary代码并补全续行斜杠"
 
           awk '
           /RUN python3 run_page\/gen_svg.py --from-db --title "my running page" --type grid/ {
@@ -81,6 +83,8 @@ jobs:
               getline; 
               # 关键：在circular行末尾添加续行斜杠（\），再打印
               print $0 " \\";  
+              # 新增：year_summary行（末尾加续行斜杠，因为后面还有monthoflife行）
+              print "  && python3 run_page/gen_svg.py --from-db --type year_summary --output assets/year_summary.svg --athlete \"${{ env.ATHLETE }}\" \\";
               # 新增monthoflife行（无需续行，因为是最后一行）
               print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-distance 10 --special-distance2 20 --special-color '\''#f9d367'\'' --special-color2 '\''#f0a1a8'\'' --output assets/mol.svg --use-localtime --athlete yihong0618 --title '\''Runner Month of Life'\''";
               next;
@@ -92,8 +96,10 @@ jobs:
           mv Dockerfile Dockerfile.old
           mv Dockerfile.tmp Dockerfile
 
-          echo "✅ 新增monthoflife代码+补全续行斜杠完成"
+          echo "✅ 新增year_summary、monthoflife代码+补全续行斜杠完成"
           cat Dockerfile | grep "circular --use-localtime"
+          # 验证year_summary是否新增成功
+          cat Dockerfile | grep "year_summary"
 
           echo "📥 开始修改自定义距离、出生年月和运动员名称"
           # 注释移到命令外部，清晰说明每个替换规则
@@ -109,9 +115,11 @@ jobs:
             -e '/gen_svg.py/ s/--birth 1989-03/--birth ${{ secrets.BIRTH }}/g' \
             -e '/gen_svg.py/ s/--athlete yihong0618/--athlete "$YOUR_NAME"/g' \
             Dockerfile
-          
+
           echo "✅ 自定义参数修改完成"
+          echo "📥 开始打印并确认Dockerfile"
           cat Dockerfile
+          echo "✅ 确认Dockerfile完成"
 
 
 
@@ -156,8 +164,8 @@ jobs:
       # - name: 数据下载并生成SVG图片
       #   id: generate-svg
       #   run: |
-      #     # 获取构建类型（手动触发优先，默认Strava）
-      #     APP_TYPE="${{ github.event.inputs.app_type || 'Strava' }}"
+      #     # 获取构建类型（手动触发优先，默认Keep）
+      #     APP_TYPE="${{ github.event.inputs.app_type || 'Keep' }}"
       #     echo "📊 开始处理 ${APP_TYPE} 平台数据并生成SVG"
           
       #     cd ${{ env.SRC_DIR }}
@@ -226,8 +234,8 @@ jobs:
       - name: 构建Docker镜像
         id: build-image
         run: |
-          # 获取构建类型（手动触发优先，默Strava）
-          APP_TYPE="${{ github.event.inputs.app_type || 'Strava' }}"
+          # 获取构建类型（手动触发优先，默Keep）
+          APP_TYPE="${{ github.event.inputs.app_type || 'Keep' }}"
           echo "🔨 开始构建 ${APP_TYPE} 平台镜像，架构：linux/amd64"
           
           # 进入源码目录执行构建
@@ -291,7 +299,7 @@ jobs:
         run: |
           # 引用环境变量中的时间戳
           TS=${{ env.IMAGE_TAG_TIMESTAMP }}
-          APP_TYPE="${{ github.event.inputs.app_type || 'Strava' }}"
+          APP_TYPE="${{ github.event.inputs.app_type || 'Keep' }}"
           TAG_LATEST="${{ env.DOCKERHUB_USERNAME }}/running_page:latest"
           TAG_APP="${{ env.DOCKERHUB_USERNAME }}/running_page:${APP_TYPE}-${TS}"
           
