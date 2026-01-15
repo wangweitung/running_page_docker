@@ -93,11 +93,11 @@ jobs:
               getline; print $0 " \\";  # 第2行：github类型，添加续行符
               getline; print $0 " \\";  # 第3行：circular类型，添加续行符（去除重复行，直接续行）
               print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-distance 10 --special-distance2 20 --special-color '\''#f9d367'\'' --special-color2 '\''#f0a1a8'\'' --output assets/mol.svg --use-localtime --athlete yihong0618 --title '\''Runner Month of Life'\'' \\";
-              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_running.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Runner Month of Life\" --sport-type running \\";
-              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_walking.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Walker Month of Life\" --sport-type walking \\";
-              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_hiking.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Hiker Month of Life\" --sport-type hiking \\";
+              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_running.svg --use-localtime --athlete \""$YOUR_NAME"\" --title \"Runner Month of Life\" --sport-type running \\";
+              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_walking.svg --use-localtime --athlete \""$YOUR_NAME"\" --title \"Walker Month of Life\" --sport-type walking \\";
+              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_hiking.svg --use-localtime --athlete \""$YOUR_NAME"\" --title \"Hiker Month of Life\" --sport-type hiking \\";
               # 修正：移除最后一行的续行符\，避免Dockerfile语法报错（无新增内容，仅删除\）
-              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_cycling.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Cyclist Month of Life\" --sport-type cycling";
+              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_cycling.svg --use-localtime --athlete \""$YOUR_NAME"\" --title \"Cyclist Month of Life\" --sport-type cycling";
               next;
           }
           1
