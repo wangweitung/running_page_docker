@@ -38,8 +38,6 @@ jobs:
         run: |
           sudo timedatectl set-timezone Asia/Shanghai
           echo "✅ 系统时区已切换为：$(date +%Z-%z)"
-
-
       - name: 生成时间戳（年月日时分秒）
         id: timestamp
         run: |
@@ -48,7 +46,6 @@ jobs:
           echo "ts=$TS" >> $GITHUB_OUTPUT
           # 可选：把时间戳写入环境变量，方便后续步骤直接使用
           echo "IMAGE_TAG_TIMESTAMP=$TS" >> $GITHUB_ENV
-
       - name: 检出当前仓库代码
         uses: actions/checkout@v4
 
@@ -65,54 +62,41 @@ jobs:
             exit 1
           fi
           echo "✅ 源码克隆完成，Dockerfile存在"
-
-
           echo "📥 开始加入生成monthoflife svg代码"
           # 核心命令：匹配目标行，添加--with-gpx参数
           sed -i 's/\(python3 run_page\/keep_sync.py ${keep_phone_number} ${keep_password}\);/\1 --with-gpx;/' Dockerfile
           echo "✅ 修改keep构建命令完成"
-
         
-
-            # 脚本功能：
-          # 1. 给Dockerfile的RUN命令中新增原始monthoflife行、多运动类型mol行（至cycling类型）
-          # 2. 补全所有非最后一行的续行斜杠（\），确保Dockerfile语法合规
-          # 3. 保留格式统一：所有新增行以"  &&"开头，引号格式、缩进与目标结果一致
-          # 4. 后续自动替换自定义参数（最小距离、特殊距离、出生年月、运动员名称）
-          # 注意事项：
-          # - Linux环境直接运行，macOS环境需将sed -i改为sed -i ''
-          # - 续行符\必须是行尾最后一个字符，后面不可有空格/制表符
-          # - 生成的${{env.ATHLETE}}为GitHub Actions环境变量，会被自动解析
-
-          # 开始执行新增代码操作（仅保留1次echo，避免日志重复）
-          echo "📥 开始加入生成monthoflife svg代码、多运动类型mol代码并补全续行斜杠"
-
+          echo "📥 开始加入生成monthoflife svg代码、year_summary代码并补全续行斜杠"
           awk '
           /RUN python3 run_page\/gen_svg.py --from-db --title "my running page" --type grid/ {
-              print $0 " \\";  # 第1行：grid类型，添加续行符
-              getline; print $0 " \\";  # 第2行：github类型，添加续行符
-              getline; print $0 " \\";  # 第3行：circular类型，添加续行符（去除重复行，直接续行）
-              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-distance 10 --special-distance2 20 --special-color '\''#f9d367'\'' --special-color2 '\''#f0a1a8'\'' --output assets/mol.svg --use-localtime --athlete yihong0618 --title '\''Runner Month of Life'\'' \\";
-              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_running.svg --use-localtime --athlete \""$YOUR_NAME"\" --title \"Runner Month of Life\" --sport-type running \\";
-              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_walking.svg --use-localtime --athlete \""$YOUR_NAME"\" --title \"Walker Month of Life\" --sport-type walking \\";
-              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_hiking.svg --use-localtime --athlete \""$YOUR_NAME"\" --title \"Hiker Month of Life\" --sport-type hiking \\";
-              # 修正：移除最后一行的续行符\，避免Dockerfile语法报错（无新增内容，仅删除\）
-              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_cycling.svg --use-localtime --athlete \""$YOUR_NAME"\" --title \"Cyclist Month of Life\" --sport-type cycling";
+              print $0;  # 打印第一行（grid类型）
+              getline; print $0;  # 打印第二行（github类型）
+              getline; 
+              # 关键：在circular行末尾添加续行斜杠（\），再打印
+              print $0 " \\";  
+              # 新增：year_summary行（末尾加续行斜杠，因为后面还有monthoflife行）
+              print "  && python3 run_page/gen_svg.py --from-db --type year_summary --output assets/year_summary.svg --athlete \"${{ env.ATHLETE }}\" \\";
+              # 新增monthoflife行（无需续行，因为是最后一行）
+              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-distance 10 --special-distance2 20 --special-color '\''#f9d367'\'' --special-color2 '\''#f0a1a8'\'' --output assets/mol.svg --use-localtime --athlete yihong0618 --title '\''Runner Month of Life'\''";
               next;
           }
           1
           ' Dockerfile > Dockerfile.tmp
-
-          # 替换原文件并备份旧文件
+          # 替换原文件
           mv Dockerfile Dockerfile.old
           mv Dockerfile.tmp Dockerfile
-
-
-          echo "✅ 新增所有monthoflife（多运动类型）代码+补全续行斜杠完成"
+          echo "✅ 新增year_summary、monthoflife代码+补全续行斜杠完成"
           cat Dockerfile | grep "circular --use-localtime"
-
-          # 执行自定义参数替换
+          # 验证year_summary是否新增成功
+          cat Dockerfile | grep "year_summary"
           echo "📥 开始修改自定义距离、出生年月和运动员名称"
+          # 注释移到命令外部，清晰说明每个替换规则
+          # 1. 替换最小距离（兼容整数/小数）
+          # 2. 替换第一个特殊距离（整数）
+          # 3. 替换第二个特殊距离（整数）
+          # 4. 替换 birth 硬编码 1989-03 为 Secrets 变量
+          # 5. 替换 monthoflife 行的 athlete yihong0618 为 "$YOUR_NAME"
           sed -i \
             -e '/gen_svg.py/ s/--min-distance [0-9.]\+/--min-distance ${{ secrets.DIS1 }}/g' \
             -e '/gen_svg.py/ s/--special-distance [0-9]\+/--special-distance ${{ secrets.DIS2 }}/g' \
@@ -120,28 +104,17 @@ jobs:
             -e '/gen_svg.py/ s/--birth 1989-03/--birth ${{ secrets.BIRTH }}/g' \
             -e '/gen_svg.py/ s/--athlete yihong0618/--athlete "$YOUR_NAME"/g' \
             Dockerfile
-
-          # 提示执行完成
-          echo "✅ 自定义参数修改完成"
-
           echo "✅ 自定义参数修改完成"
           echo "📥 开始打印并确认Dockerfile"
           cat Dockerfile
           echo "✅ 确认Dockerfile完成"
-
-
-
           echo "📥 开始替换mapboxtoken"
           # 核心修改：匹配单引号包裹的 Mapbox Token 字符串，直接替换
           sed -i \
             -e "s/'pk[^']*'/'${{ secrets.MAPBOX }}'/g" \
           ./src/utils/const.ts
           echo "✅ mapboxtoken替换完成"
-
-
-
           # 新增：修改 src/static/site-metadata.ts 中的对应字段（核心正确逻辑）
-
           echo "📥 开始替换 site-metadata.ts 中的站点配置"
           SITE_METADATA_FILE="./src/static/site-metadata.ts"
           # 1. 检查文件是否存在
@@ -158,7 +131,6 @@ jobs:
             -e "s|url: 'https://github.com/yihong0618/running_page/blob/master/README-CN.md'|url: '${{ secrets.ABOUTurl }}'|g" \
           "$SITE_METADATA_FILE"
           echo "✅ site-metadata.ts 站点配置替换完成"
-
         
       # - name: 安装Python依赖（用于生成SVG）
       #   run: |
@@ -295,7 +267,6 @@ jobs:
             --platform linux/amd64 \
             $BUILD_ARGS \
             --load .
-
       - name: 登录Docker Hub
         uses: docker/login-action@v3
         with:
