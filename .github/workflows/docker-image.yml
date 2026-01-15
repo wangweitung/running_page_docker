@@ -80,18 +80,19 @@ jobs:
           cat Dockerfile
 
           echo "📥 开始修改自定义距离、出生年月和运动员名称"
+          # 注释移到命令外部，清晰说明每个替换规则
+          # 1. 替换最小距离（兼容整数/小数）
+          # 2. 替换第一个特殊距离（整数）
+          # 3. 替换第二个特殊距离（整数）
+          # 4. 替换 birth 硬编码 1989-03 为 Secrets 变量
+          # 5. 替换 monthoflife 行的 athlete yihong0618 为 "$YOUR_NAME"
           sed -i \
-            # 1. 原有：替换最小距离（兼容整数/小数）
             -e '/gen_svg.py/ s/--min-distance [0-9.]\+/--min-distance ${{ secrets.DIS1 }}/g' \
-            # 2. 原有：替换第一个特殊距离（整数）
             -e '/gen_svg.py/ s/--special-distance [0-9]\+/--special-distance ${{ secrets.DIS2 }}/g' \
-            # 3. 原有：替换第二个特殊距离（整数）
             -e '/gen_svg.py/ s/--special-distance2 [0-9]\+/--special-distance2 ${{ secrets.DIS3 }}/g' \
-            # 4. 新增：替换 birth 硬编码 1989-03 为 Secrets 变量
             -e '/gen_svg.py/ s/--birth 1989-03/--birth ${{ secrets.BIRTH }}/g' \
-            # 5. 新增：替换 monthoflife 行的 athlete yihong0618 为 "$YOUR_NAME"
             -e '/gen_svg.py/ s/--athlete yihong0618/--athlete "$YOUR_NAME"/g' \
-          Dockerfile
+            Dockerfile
           
           echo "✅ 自定义参数修改完成"
           cat Dockerfile
