@@ -88,6 +88,20 @@ jobs:
           # 开始执行新增代码操作
           echo "📥 开始加入生成monthoflife svg代码、多运动类型mol代码并补全续行斜杠"
 
+          # 脚本功能：
+          # 1. 给Dockerfile的RUN命令中新增重复circular行、原始monthoflife行、7个运动类型的monthoflife行
+          # 2. 补全所有非最后一行的续行斜杠（\），确保Dockerfile语法合规
+          # 3. 保留格式统一：所有新增行以"  &&"开头，引号格式、缩进与目标结果一致
+          # 4. 后续自动替换自定义参数（最小距离、特殊距离、出生年月、运动员名称）
+          # 5. 验证关键行生成结果，方便排查问题
+          # 注意事项：
+          # - Linux环境直接运行，macOS环境需将sed -i改为sed -i ''
+          # - 续行符\必须是行尾最后一个字符，后面不可有空格/制表符
+          # - 生成的${{env.ATHLETE}}为GitHub Actions环境变量，会被自动解析
+
+          # 开始执行新增代码操作
+          echo "📥 开始加入生成monthoflife svg代码、多运动类型mol代码并补全续行斜杠"
+
           awk '
           /RUN python3 run_page\/gen_svg.py --from-db --title "my running page" --type grid/ {
               print $0 " \\";  # 第1行：grid类型，添加续行符
@@ -97,7 +111,8 @@ jobs:
               print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_running.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Runner Month of Life\" --sport-type running \\";
               print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_walking.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Walker Month of Life\" --sport-type walking \\";
               print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_hiking.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Hiker Month of Life\" --sport-type hiking \\";
-              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_cycling.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Cyclist Month of Life\" --sport-type cycling \\";
+              # 修正：移除最后一行的续行符\，避免Dockerfile语法报错（无新增内容，仅删除\）
+              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_cycling.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Cyclist Month of Life\" --sport-type cycling";
               next;
           }
           1
