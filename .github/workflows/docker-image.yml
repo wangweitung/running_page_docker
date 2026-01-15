@@ -71,8 +71,8 @@ jobs:
           # 从当前仓库根目录复制Dockerfile到源码目录
           cp ./Dockerfile ${{ env.SRC_DIR }}/Dockerfile
           # 验证覆盖结果
-          echo "✅ 覆盖后源码目录的Dockerfile内容："
-          cat ${{ env.SRC_DIR }}/Dockerfile
+          echo "✅ 覆盖后源码目录的Dockerfile已更新"
+          ls -l ${{ env.SRC_DIR }}/Dockerfile
       # ======================================================================
 
 
