@@ -74,32 +74,17 @@ jobs:
 
         
 
-          # 脚本功能：
-          # 1. 给Dockerfile的RUN命令中新增重复circular行、原始monthoflife行、7个运动类型的monthoflife行
+            # 脚本功能：
+          # 1. 给Dockerfile的RUN命令中新增原始monthoflife行、多运动类型mol行（至cycling类型）
           # 2. 补全所有非最后一行的续行斜杠（\），确保Dockerfile语法合规
           # 3. 保留格式统一：所有新增行以"  &&"开头，引号格式、缩进与目标结果一致
           # 4. 后续自动替换自定义参数（最小距离、特殊距离、出生年月、运动员名称）
-          # 5. 验证关键行生成结果，方便排查问题
           # 注意事项：
           # - Linux环境直接运行，macOS环境需将sed -i改为sed -i ''
           # - 续行符\必须是行尾最后一个字符，后面不可有空格/制表符
           # - 生成的${{env.ATHLETE}}为GitHub Actions环境变量，会被自动解析
 
-          # 开始执行新增代码操作
-          echo "📥 开始加入生成monthoflife svg代码、多运动类型mol代码并补全续行斜杠"
-
-          # 脚本功能：
-          # 1. 给Dockerfile的RUN命令中新增重复circular行、原始monthoflife行、7个运动类型的monthoflife行
-          # 2. 补全所有非最后一行的续行斜杠（\），确保Dockerfile语法合规
-          # 3. 保留格式统一：所有新增行以"  &&"开头，引号格式、缩进与目标结果一致
-          # 4. 后续自动替换自定义参数（最小距离、特殊距离、出生年月、运动员名称）
-          # 5. 验证关键行生成结果，方便排查问题
-          # 注意事项：
-          # - Linux环境直接运行，macOS环境需将sed -i改为sed -i ''
-          # - 续行符\必须是行尾最后一个字符，后面不可有空格/制表符
-          # - 生成的${{env.ATHLETE}}为GitHub Actions环境变量，会被自动解析
-
-          # 开始执行新增代码操作
+          # 开始执行新增代码操作（仅保留1次echo，避免日志重复）
           echo "📥 开始加入生成monthoflife svg代码、多运动类型mol代码并补全续行斜杠"
 
           awk '
@@ -122,10 +107,9 @@ jobs:
           mv Dockerfile Dockerfile.old
           mv Dockerfile.tmp Dockerfile
 
-          # 验证关键行生成结果
+
           echo "✅ 新增所有monthoflife（多运动类型）代码+补全续行斜杠完成"
           cat Dockerfile | grep "circular --use-localtime"
-          cat Dockerfile | grep "mol_skiing.svg"
 
           # 执行自定义参数替换
           echo "📥 开始修改自定义距离、出生年月和运动员名称"
