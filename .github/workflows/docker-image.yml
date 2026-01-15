@@ -62,6 +62,7 @@ jobs:
             exit 1
           fi
           echo "✅ 源码克隆完成，Dockerfile存在"
+     
 
       - name: 用当前仓库的Dockerfile覆盖源码目录的Dockerfile
         run: |
@@ -71,6 +72,7 @@ jobs:
           # 验证覆盖结果
           echo "✅ 覆盖后源码目录的Dockerfile已更新"
           ls -l ${{ env.SRC_DIR }}/Dockerfile
+          cat ./Dockerfile
 
 
 
