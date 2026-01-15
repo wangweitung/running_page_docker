@@ -75,8 +75,9 @@ jobs:
 
           sed -i.bak "s|$OLD_CONTENT|$NEW_CONTENT|g" Dockerfile
           rm -f Dockerfile.bak
-          cat Dockerfile
+          
           echo "✅ 加入生成monthoflife svg代码完成"
+          cat Dockerfile
 
           echo "📥 开始修改自定义距离、出生年月和运动员名称"
           sed -i \
@@ -91,8 +92,9 @@ jobs:
             # 5. 新增：替换 monthoflife 行的 athlete yihong0618 为 "$YOUR_NAME"
             -e '/gen_svg.py/ s/--athlete yihong0618/--athlete "$YOUR_NAME"/g' \
           Dockerfile
-          cat Dockerfile
+          
           echo "✅ 自定义参数修改完成"
+          cat Dockerfile
 
 
 
