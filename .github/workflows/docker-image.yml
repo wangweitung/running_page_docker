@@ -109,6 +109,7 @@ jobs:
           # 3. 替换第二个特殊距离（整数）
           # 4. 替换 birth 硬编码 1989-03 为 Secrets 变量
           # 5. 替换 monthoflife 行的 athlete yihong0618 为 "$YOUR_NAME"
+          cd ${{ env.SRC_DIR }} 
           sed -i \
             -e '/gen_svg.py/ s/--min-distance [0-9.]\+/--min-distance ${{ secrets.DIS1 }}/g' \
             -e '/gen_svg.py/ s/--special-distance [0-9]\+/--special-distance ${{ secrets.DIS2 }}/g' \
