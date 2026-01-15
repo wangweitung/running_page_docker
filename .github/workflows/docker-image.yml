@@ -93,18 +93,11 @@ jobs:
               print $0 " \\";  # 第1行：grid类型，添加续行符
               getline; print $0 " \\";  # 第2行：github类型，添加续行符
               getline; print $0 " \\";  # 第3行：circular类型，添加续行符（去除重复行，直接续行）
-              # 新增monthoflife原始行（带续行符，清理冗余格式）
               print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-distance 10 --special-distance2 20 --special-color '\''#f9d367'\'' --special-color2 '\''#f0a1a8'\'' --output assets/mol.svg --use-localtime --athlete yihong0618 --title '\''Runner Month of Life'\'' \\";
-              # 新增running类型行（去除末尾多余空格，带续行符）
               print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_running.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Runner Month of Life\" --sport-type running \\";
-              # 后续各运动类型行（保持续行符，格式统一）
               print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_walking.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Walker Month of Life\" --sport-type walking \\";
               print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_hiking.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Hiker Month of Life\" --sport-type hiking \\";
               print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_cycling.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Cyclist Month of Life\" --sport-type cycling \\";
-              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Month of Life\" --sport-type all \\";
-              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_swimming.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Swimmer Month of Life\" --sport-type swimming \\";
-              # 最后一行：skiing类型，无续行符（作为RUN命令结尾）
-              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_skiing.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Skier Month of Life\" --sport-type skiing";
               next;
           }
           1
