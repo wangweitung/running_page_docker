@@ -104,48 +104,48 @@ jobs:
         # # 验证year_summary是否新增成功
         # cat Dockerfile | grep "year_summary"
       - name: 安装Python依赖（用于生成SVG）
-        echo "📥 开始修改自定义距离、出生年月和运动员名称"  
-          # 注释移到命令外部，清晰说明每个替换规则
-          # 1. 替换最小距离（兼容整数/小数）
-          # 2. 替换第一个特殊距离（整数）
-          # 3. 替换第二个特殊距离（整数）
-          # 4. 替换 birth 硬编码 1989-03 为 Secrets 变量
-          # 5. 替换 monthoflife 行的 athlete yihong0618 为 "$YOUR_NAME"
-        cd ${{ env.SRC_DIR }} 
-        sed -i \
-          -e '/gen_svg.py/ s/--min-distance [0-9.]\+/--min-distance ${{ secrets.DIS1 }}/g' \
-          -e '/gen_svg.py/ s/--special-distance [0-9]\+/--special-distance ${{ secrets.DIS2 }}/g' \
-          -e '/gen_svg.py/ s/--special-distance2 [0-9]\+/--special-distance2 ${{ secrets.DIS3 }}/g' \
-          -e '/gen_svg.py/ s/--birth 1989-03/--birth ${{ secrets.BIRTH }}/g' \
-          #-e '/gen_svg.py/ s/--athlete yihong0618/--athlete "$YOUR_NAME"/g' \
-          Dockerfile
-        echo "✅ 自定义参数修改完成"
-        echo "📥 开始打印并确认Dockerfile"
-        cat Dockerfile
-        echo "✅ 确认Dockerfile完成"
-        echo "📥 开始替换mapboxtoken"
-        # 核心修改：匹配单引号包裹的 Mapbox Token 字符串，直接替换
-        sed -i \
-          -e "s/'pk[^']*'/'${{ secrets.MAPBOX }}'/g" \
-        ./src/utils/const.ts
-        echo "✅ mapboxtoken替换完成"
-        # 新增：修改 src/static/site-metadata.ts 中的对应字段（核心正确逻辑）
-        echo "📥 开始替换 site-metadata.ts 中的站点配置"
-        SITE_METADATA_FILE="./src/static/site-metadata.ts"
-        # 1. 检查文件是否存在
-        if [ ! -f "$SITE_METADATA_FILE" ]; then
-          echo "❌ 未找到 $SITE_METADATA_FILE 文件"
-          exit 1
-        fi
-        # 2. 使用 | 作为分隔符，避免 URL 中的 / 冲突
-        sed -i \
-          -e "s|siteTitle: 'Running Page'|siteTitle: '${{ secrets.SITEtitle }}'|g" \
-          -e "s|siteUrl: 'https://yihong.run'|siteUrl: '${{ secrets.SITEurl }}'|g" \
-          -e "s|description: 'Personal site and blog'|description: '${{ secrets.SITEdescription }}'|g" \
-          -e "s|url: 'https://github.com/yihong0618/gitblog'|url: '${{ secrets.BLOGurl }}'|g" \
-          -e "s|url: 'https://github.com/yihong0618/running_page/blob/master/README-CN.md'|url: '${{ secrets.ABOUTurl }}'|g" \
-        "$SITE_METADATA_FILE"
-        echo "✅ site-metadata.ts 站点配置替换完成"
+          echo "📥 开始修改自定义距离、出生年月和运动员名称"  
+            # 注释移到命令外部，清晰说明每个替换规则
+            # 1. 替换最小距离（兼容整数/小数）
+            # 2. 替换第一个特殊距离（整数）
+            # 3. 替换第二个特殊距离（整数）
+            # 4. 替换 birth 硬编码 1989-03 为 Secrets 变量
+            # 5. 替换 monthoflife 行的 athlete yihong0618 为 "$YOUR_NAME"
+          cd ${{ env.SRC_DIR }} 
+          sed -i \
+            -e '/gen_svg.py/ s/--min-distance [0-9.]\+/--min-distance ${{ secrets.DIS1 }}/g' \
+            -e '/gen_svg.py/ s/--special-distance [0-9]\+/--special-distance ${{ secrets.DIS2 }}/g' \
+            -e '/gen_svg.py/ s/--special-distance2 [0-9]\+/--special-distance2 ${{ secrets.DIS3 }}/g' \
+            -e '/gen_svg.py/ s/--birth 1989-03/--birth ${{ secrets.BIRTH }}/g' \
+            #-e '/gen_svg.py/ s/--athlete yihong0618/--athlete "$YOUR_NAME"/g' \
+            Dockerfile
+          echo "✅ 自定义参数修改完成"
+          echo "📥 开始打印并确认Dockerfile"
+          cat Dockerfile
+          echo "✅ 确认Dockerfile完成"
+          echo "📥 开始替换mapboxtoken"
+          # 核心修改：匹配单引号包裹的 Mapbox Token 字符串，直接替换
+          sed -i \
+            -e "s/'pk[^']*'/'${{ secrets.MAPBOX }}'/g" \
+          ./src/utils/const.ts
+          echo "✅ mapboxtoken替换完成"
+          # 新增：修改 src/static/site-metadata.ts 中的对应字段（核心正确逻辑）
+          echo "📥 开始替换 site-metadata.ts 中的站点配置"
+          SITE_METADATA_FILE="./src/static/site-metadata.ts"
+          # 1. 检查文件是否存在
+          if [ ! -f "$SITE_METADATA_FILE" ]; then
+            echo "❌ 未找到 $SITE_METADATA_FILE 文件"
+            exit 1
+          fi
+          # 2. 使用 | 作为分隔符，避免 URL 中的 / 冲突
+          sed -i \
+            -e "s|siteTitle: 'Running Page'|siteTitle: '${{ secrets.SITEtitle }}'|g" \
+            -e "s|siteUrl: 'https://yihong.run'|siteUrl: '${{ secrets.SITEurl }}'|g" \
+            -e "s|description: 'Personal site and blog'|description: '${{ secrets.SITEdescription }}'|g" \
+            -e "s|url: 'https://github.com/yihong0618/gitblog'|url: '${{ secrets.BLOGurl }}'|g" \
+            -e "s|url: 'https://github.com/yihong0618/running_page/blob/master/README-CN.md'|url: '${{ secrets.ABOUTurl }}'|g" \
+          "$SITE_METADATA_FILE"
+          echo "✅ site-metadata.ts 站点配置替换完成"
         
       # - name: 安装Python依赖（用于生成SVG）
       #   run: |
