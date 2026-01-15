@@ -63,8 +63,6 @@ jobs:
           fi
           echo "✅ 源码克隆完成，Dockerfile存在"
 
-
-      # ========== 核心修改：复制根目录Dockerfile覆盖源码Dockerfile ==========
       - name: 用当前仓库的Dockerfile覆盖源码目录的Dockerfile
         run: |
           echo "🔄 开始覆盖源码的Dockerfile"
@@ -73,7 +71,7 @@ jobs:
           # 验证覆盖结果
           echo "✅ 覆盖后源码目录的Dockerfile已更新"
           ls -l ${{ env.SRC_DIR }}/Dockerfile
-      # ======================================================================
+
 
 
           # echo "📥 开始加入生成monthoflife svg代码"
