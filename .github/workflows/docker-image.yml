@@ -74,40 +74,53 @@ jobs:
 
         
 
-          echo "📥 开始加入生成monthoflife svg代码、year_summary代码并补全续行斜杠"
+          # 脚本功能：
+          # 1. 给Dockerfile的RUN命令中新增重复circular行、原始monthoflife行、7个运动类型的monthoflife行
+          # 2. 补全所有非最后一行的续行斜杠（\），确保Dockerfile语法合规
+          # 3. 保留格式统一：所有新增行以"  &&"开头，引号格式、缩进与目标结果一致
+          # 4. 后续自动替换自定义参数（最小距离、特殊距离、出生年月、运动员名称）
+          # 5. 验证关键行生成结果，方便排查问题
+          # 注意事项：
+          # - Linux环境直接运行，macOS环境需将sed -i改为sed -i ''
+          # - 续行符\必须是行尾最后一个字符，后面不可有空格/制表符
+          # - 生成的${{env.ATHLETE}}为GitHub Actions环境变量，会被自动解析
+
+          # 开始执行新增代码操作
+          echo "📥 开始加入生成monthoflife svg代码、多运动类型mol代码并补全续行斜杠"
 
           awk '
           /RUN python3 run_page\/gen_svg.py --from-db --title "my running page" --type grid/ {
-              print $0;  # 打印第一行（grid类型）
-              getline; print $0;  # 打印第二行（github类型）
-              getline; 
-              # 关键：在circular行末尾添加续行斜杠（\），再打印
-              print $0 " \\";  
-              # 新增：year_summary行（末尾加续行斜杠，因为后面还有monthoflife行）
-              print "  && python3 run_page/gen_svg.py --from-db --type year_summary --output assets/year_summary.svg --athlete \"${{ env.ATHLETE }}\" \\";
-              # 新增monthoflife行（无需续行，因为是最后一行）
-              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-distance 10 --special-distance2 20 --special-color '\''#f9d367'\'' --special-color2 '\''#f0a1a8'\'' --output assets/mol.svg --use-localtime --athlete yihong0618 --title '\''Runner Month of Life'\''";
+              print $0 " \\";  # 第1行：grid类型，添加续行符
+              getline; print $0 " \\";  # 第2行：github类型，添加续行符
+              getline; print $0 " \\";  # 第3行：circular类型，添加续行符（去除重复行，直接续行）
+              # 新增monthoflife原始行（带续行符，清理冗余格式）
+              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-distance 10 --special-distance2 20 --special-color '\''#f9d367'\'' --special-color2 '\''#f0a1a8'\'' --output assets/mol.svg --use-localtime --athlete yihong0618 --title '\''Runner Month of Life'\'' \\";
+              # 新增running类型行（去除末尾多余空格，带续行符）
+              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_running.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Runner Month of Life\" --sport-type running \\";
+              # 后续各运动类型行（保持续行符，格式统一）
+              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_walking.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Walker Month of Life\" --sport-type walking \\";
+              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_hiking.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Hiker Month of Life\" --sport-type hiking \\";
+              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_cycling.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Cyclist Month of Life\" --sport-type cycling \\";
+              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Month of Life\" --sport-type all \\";
+              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_swimming.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Swimmer Month of Life\" --sport-type swimming \\";
+              # 最后一行：skiing类型，无续行符（作为RUN命令结尾）
+              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-color \"#f9d367\"  --special-color2 \"#f0a1a8\" --output assets/mol_skiing.svg --use-localtime --athlete \"${{env.ATHLETE}}\" --title \"Skier Month of Life\" --sport-type skiing";
               next;
           }
           1
           ' Dockerfile > Dockerfile.tmp
 
-          # 替换原文件
+          # 替换原文件并备份旧文件
           mv Dockerfile Dockerfile.old
           mv Dockerfile.tmp Dockerfile
 
-          echo "✅ 新增year_summary、monthoflife代码+补全续行斜杠完成"
+          # 验证关键行生成结果
+          echo "✅ 新增所有monthoflife（多运动类型）代码+补全续行斜杠完成"
           cat Dockerfile | grep "circular --use-localtime"
-          # 验证year_summary是否新增成功
-          cat Dockerfile | grep "year_summary"
+          cat Dockerfile | grep "mol_skiing.svg"
 
+          # 执行自定义参数替换
           echo "📥 开始修改自定义距离、出生年月和运动员名称"
-          # 注释移到命令外部，清晰说明每个替换规则
-          # 1. 替换最小距离（兼容整数/小数）
-          # 2. 替换第一个特殊距离（整数）
-          # 3. 替换第二个特殊距离（整数）
-          # 4. 替换 birth 硬编码 1989-03 为 Secrets 变量
-          # 5. 替换 monthoflife 行的 athlete yihong0618 为 "$YOUR_NAME"
           sed -i \
             -e '/gen_svg.py/ s/--min-distance [0-9.]\+/--min-distance ${{ secrets.DIS1 }}/g' \
             -e '/gen_svg.py/ s/--special-distance [0-9]\+/--special-distance ${{ secrets.DIS2 }}/g' \
@@ -115,6 +128,9 @@ jobs:
             -e '/gen_svg.py/ s/--birth 1989-03/--birth ${{ secrets.BIRTH }}/g' \
             -e '/gen_svg.py/ s/--athlete yihong0618/--athlete "$YOUR_NAME"/g' \
             Dockerfile
+
+          # 提示执行完成
+          echo "✅ 自定义参数修改完成"
 
           echo "✅ 自定义参数修改完成"
           echo "📥 开始打印并确认Dockerfile"
