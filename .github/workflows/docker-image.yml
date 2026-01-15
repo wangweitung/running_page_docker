@@ -75,28 +75,26 @@ jobs:
 
           sed -i.bak "s|$OLD_CONTENT|$NEW_CONTENT|g" Dockerfile
           rm -f Dockerfile.bak
+          cat Dockerfile
           echo "✅ 加入生成monthoflife svg代码完成"
 
-          # 2. 替换所有自定义参数（距离/运动员/出生年月）
-          echo "📥 开始修改自定义距离、运动员名称和出生年月"
+          echo "📥 开始修改自定义距离、出生年月和运动员名称"
           sed -i \
+            # 1. 原有：替换最小距离（兼容整数/小数）
             -e '/gen_svg.py/ s/--min-distance [0-9.]\+/--min-distance ${{ secrets.DIS1 }}/g' \
+            # 2. 原有：替换第一个特殊距离（整数）
             -e '/gen_svg.py/ s/--special-distance [0-9]\+/--special-distance ${{ secrets.DIS2 }}/g' \
+            # 3. 原有：替换第二个特殊距离（整数）
             -e '/gen_svg.py/ s/--special-distance2 [0-9]\+/--special-distance2 ${{ secrets.DIS3 }}/g' \
-            -e '/gen_svg.py/ s/--athlete "\$YOUR_NAME"/--athlete ${{ secrets.RUNNING_PAGE_ATHLETE }}/g' \
-            -e '/gen_svg.py/ s/--athlete yihong0618/--athlete ${{ secrets.RUNNING_PAGE_ATHLETE }}/g' \
+            # 4. 新增：替换 birth 硬编码 1989-03 为 Secrets 变量
             -e '/gen_svg.py/ s/--birth 1989-03/--birth ${{ secrets.BIRTH }}/g' \
+            # 5. 新增：替换 monthoflife 行的 athlete yihong0618 为 "$YOUR_NAME"
+            -e '/gen_svg.py/ s/--athlete yihong0618/--athlete "$YOUR_NAME"/g' \
           Dockerfile
+          cat Dockerfile
           echo "✅ 自定义参数修改完成"
 
 
-          # echo "📥 开始修改自定义距离"
-          # sed -i \
-          #   -e '/gen_svg.py/ s/--min-distance [0-9.]\+/--min-distance ${{ secrets.DIS1 }}/g' \
-          #   -e '/gen_svg.py/ s/--special-distance [0-9]\+/--special-distance ${{ secrets.DIS2 }}/g' \
-          #   -e '/gen_svg.py/ s/--special-distance2 [0-9]\+/--special-distance2 ${{ secrets.DIS3 }}/g' \
-          # Dockerfile
-          # echo "✅ 自定义距离修改完成"
 
           echo "📥 开始替换mapboxtoken"
           # 核心修改：匹配单引号包裹的 Mapbox Token 字符串，直接替换
@@ -224,6 +222,7 @@ jobs:
                 --build-arg client_id=${{ secrets.STRAVA_CLIENT_ID }} \
                 --build-arg client_secret=${{ secrets.STRAVA_CLIENT_SECRET }} \
                 --build-arg refresh_token=${{ secrets.STRAVA_REFRESH_TOKEN }} \
+                #--build-arg YOUR_NAME=${{ secrets.MY_NAME }}  \
                 --build-arg YOUR_NAME=${{ secrets.MY_NAME }}"
               ;;
             NRC)
