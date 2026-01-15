@@ -62,34 +62,48 @@ jobs:
             exit 1
           fi
           echo "✅ 源码克隆完成，Dockerfile存在"
-          echo "📥 开始加入生成monthoflife svg代码"
-          # 核心命令：匹配目标行，添加--with-gpx参数
-          sed -i 's/\(python3 run_page\/keep_sync.py ${keep_phone_number} ${keep_password}\);/\1 --with-gpx;/' Dockerfile
-          echo "✅ 修改keep构建命令完成"
+
+
+      # ========== 核心修改：复制根目录Dockerfile覆盖源码Dockerfile ==========
+      - name: 用当前仓库的Dockerfile覆盖源码目录的Dockerfile
+        run: |
+          echo "🔄 开始覆盖源码的Dockerfile"
+          # 从当前仓库根目录复制Dockerfile到源码目录
+          cp ./Dockerfile ${{ env.SRC_DIR }}/Dockerfile
+          # 验证覆盖结果
+          echo "✅ 覆盖后源码目录的Dockerfile内容："
+          cat ${{ env.SRC_DIR }}/Dockerfile
+      # ======================================================================
+
+
+          # echo "📥 开始加入生成monthoflife svg代码"
+          # # 核心命令：匹配目标行，添加--with-gpx参数
+          # sed -i 's/\(python3 run_page\/keep_sync.py ${keep_phone_number} ${keep_password}\);/\1 --with-gpx;/' Dockerfile
+          # echo "✅ 修改keep构建命令完成"
         
-          echo "📥 开始加入生成monthoflife svg代码、year_summary代码并补全续行斜杠"
-          awk '
-          /RUN python3 run_page\/gen_svg.py --from-db --title "my running page" --type grid/ {
-              print $0;  # 打印第一行（grid类型）
-              getline; print $0;  # 打印第二行（github类型）
-              getline; 
-              # 关键：在circular行末尾添加续行斜杠（\），再打印
-              print $0 " \\";  
-              # 新增：year_summary行（末尾加续行斜杠，因为后面还有monthoflife行）
-              print "  && python3 run_page/gen_svg.py --from-db --type year_summary --output assets/year_summary.svg --athlete \"${{ env.ATHLETE }}\" \\";
-              # 新增monthoflife行（无需续行，因为是最后一行）
-              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-distance 10 --special-distance2 20 --special-color '\''#f9d367'\'' --special-color2 '\''#f0a1a8'\'' --output assets/mol.svg --use-localtime --athlete yihong0618 --title '\''Runner Month of Life'\''";
-              next;
-          }
-          1
-          ' Dockerfile > Dockerfile.tmp
-          # 替换原文件
-          mv Dockerfile Dockerfile.old
-          mv Dockerfile.tmp Dockerfile
-          echo "✅ 新增year_summary、monthoflife代码+补全续行斜杠完成"
-          cat Dockerfile | grep "circular --use-localtime"
-          # 验证year_summary是否新增成功
-          cat Dockerfile | grep "year_summary"
+          # echo "📥 开始加入生成monthoflife svg代码、year_summary代码并补全续行斜杠"
+          # awk '
+          # /RUN python3 run_page\/gen_svg.py --from-db --title "my running page" --type grid/ {
+          #     print $0;  # 打印第一行（grid类型）
+          #     getline; print $0;  # 打印第二行（github类型）
+          #     getline; 
+          #     # 关键：在circular行末尾添加续行斜杠（\），再打印
+          #     print $0 " \\";  
+          #     # 新增：year_summary行（末尾加续行斜杠，因为后面还有monthoflife行）
+          #     print "  && python3 run_page/gen_svg.py --from-db --type year_summary --output assets/year_summary.svg --athlete \"${{ env.ATHLETE }}\" \\";
+          #     # 新增monthoflife行（无需续行，因为是最后一行）
+          #     print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-distance 10 --special-distance2 20 --special-color '\''#f9d367'\'' --special-color2 '\''#f0a1a8'\'' --output assets/mol.svg --use-localtime --athlete yihong0618 --title '\''Runner Month of Life'\''";
+          #     next;
+          # }
+          # 1
+          # ' Dockerfile > Dockerfile.tmp
+          # # 替换原文件
+          # mv Dockerfile Dockerfile.old
+          # mv Dockerfile.tmp Dockerfile
+          # echo "✅ 新增year_summary、monthoflife代码+补全续行斜杠完成"
+          # cat Dockerfile | grep "circular --use-localtime"
+          # # 验证year_summary是否新增成功
+          # cat Dockerfile | grep "year_summary"
           echo "📥 开始修改自定义距离、出生年月和运动员名称"
           # 注释移到命令外部，清晰说明每个替换规则
           # 1. 替换最小距离（兼容整数/小数）
@@ -102,7 +116,7 @@ jobs:
             -e '/gen_svg.py/ s/--special-distance [0-9]\+/--special-distance ${{ secrets.DIS2 }}/g' \
             -e '/gen_svg.py/ s/--special-distance2 [0-9]\+/--special-distance2 ${{ secrets.DIS3 }}/g' \
             -e '/gen_svg.py/ s/--birth 1989-03/--birth ${{ secrets.BIRTH }}/g' \
-            -e '/gen_svg.py/ s/--athlete yihong0618/--athlete "$YOUR_NAME"/g' \
+            #-e '/gen_svg.py/ s/--athlete yihong0618/--athlete "$YOUR_NAME"/g' \
             Dockerfile
           echo "✅ 自定义参数修改完成"
           echo "📥 开始打印并确认Dockerfile"
