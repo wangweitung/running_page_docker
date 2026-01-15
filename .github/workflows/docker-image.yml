@@ -67,23 +67,30 @@ jobs:
           echo "✅ 源码克隆完成，Dockerfile存在"
 
 
-          # 1. 新增 monthoflife 生成代码
           echo "📥 开始加入生成monthoflife svg代码"
 
-          # 1. 定义包含真实换行符的OLD_CONTENT和NEW_CONTENT（用$'\n'表示真实换行，仅Bash支持）
-          OLD_CONTENT=$'RUN python3 run_page/gen_svg.py --from-db --title "my running page" --type grid --athlete "$YOUR_NAME" --output assets/grid.svg --min-distance 10.0 --special-color yellow --special-color2 red --special-distance 20 --special-distance2 40 --use-localtime \\\n  && python3 run_page/gen_svg.py --from-db --title "my running page" --type github --athlete "$YOUR_NAME" --special-distance 10 --special-distance2 20 --special-color yellow --special-color2 red --output assets/github.svg --use-localtime --min-distance 0.5 \\\n  && python3 run_page/gen_svg.py --from-db --type circular --use-localtime'
+          # awk处理多行替换，无分隔符冲突，无未终止命令风险
+          awk '
+          # 匹配目标行的起始（避免分隔符冲突）
+          /RUN python3 run_page\/gen_svg.py --from-db --title "my running page" --type grid/ {
+              # 打印第一行原内容
+              print $0;
+              # 读取并打印第二行（github类型）
+              getline; print $0;
+              # 读取并打印第三行（circular类型）
+              getline; print $0;
+              # 新增monthoflife行（直接构造，无分隔符冲突）
+              print "  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-distance 10 --special-distance2 20 --special-color '\''#f9d367'\'' --special-color2 '\''#f0a1a8'\'' --output assets/mol.svg --use-localtime --athlete yihong0618 --title '\''Runner Month of Life'\''";
+              next;
+          }
+          # 非目标内容原样输出
+          1
+          ' Dockerfile > Dockerfile.tmp
 
-          NEW_CONTENT=$'RUN python3 run_page/gen_svg.py --from-db --title "my running page" --type grid --athlete "$YOUR_NAME" --output assets/grid.svg --min-distance 10.0 --special-color yellow --special-color2 red --special-distance 20 --special-distance2 40 --use-localtime \\\n  && python3 run_page/gen_svg.py --from-db --title "my running page" --type github --athlete "$YOUR_NAME" --special-distance 10 --special-distance2 20 --special-color yellow --special-color2 red --output assets/github.svg --use-localtime --min-distance 0.5 \\\n  && python3 run_page/gen_svg.py --from-db --type circular --use-localtime \\\n  && python3 run_page/gen_svg.py --from-db --type monthoflife --birth 1989-03 --special-distance 10 --special-distance2 20 --special-color \'#f9d367\' --special-color2 \'#f0a1a8\' --output assets/mol.svg --use-localtime --athlete yihong0618 --title \'Runner Month of Life\''
+          # 替换原文件（备份旧文件）
+          mv Dockerfile Dockerfile.old
+          mv Dockerfile.tmp Dockerfile
 
-          # 2. 转义特殊字符（$、\、'等），避免sed解析错误
-          OLD_CONTENT_ESC=$(echo "$OLD_CONTENT" | sed -e 's/[\/&$*.^|]/\\&/g')
-          NEW_CONTENT_ESC=$(echo "$NEW_CONTENT" | sed -e 's/[\/&$*.^|]/\\&/g')
-
-          # 3. 使用sed的多行模式（GNU sed专属，Linux环境），用%作为分隔符避免冲突
-          sed -i.bak -z "s|$OLD_CONTENT_ESC|$NEW_CONTENT_ESC|g" Dockerfile
-
-          # 4. 清理备份文件
-          rm -f Dockerfile.bak
           echo "✅ 加入生成monthoflife svg代码完成"
           cat Dockerfile
 
