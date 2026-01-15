@@ -225,7 +225,6 @@ jobs:
                 --build-arg client_id=${{ secrets.STRAVA_CLIENT_ID }} \
                 --build-arg client_secret=${{ secrets.STRAVA_CLIENT_SECRET }} \
                 --build-arg refresh_token=${{ secrets.STRAVA_REFRESH_TOKEN }} \
-                #--build-arg YOUR_NAME=${{ secrets.MY_NAME }}  \
                 --build-arg YOUR_NAME=${{ secrets.MY_NAME }}"
               ;;
             NRC)
