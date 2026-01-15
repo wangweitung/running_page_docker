@@ -77,12 +77,13 @@ jobs:
 
           echo "📥 开始修改自定义距离、出生年月和运动员名称"  
           cd ${{ env.SRC_DIR }}  && ls
+          # 修复格式：无多余空白，续行符后无隐藏字符，Dockerfile 前无缩进
           sed -i \
             -e '/gen_svg.py/ s/--min-distance [0-9.]\+/--min-distance ${{ secrets.DIS1 }}/g' \
             -e '/gen_svg.py/ s/--special-distance [0-9]\+/--special-distance ${{ secrets.DIS2 }}/g' \
             -e '/gen_svg.py/ s/--special-distance2 [0-9]\+/--special-distance2 ${{ secrets.DIS3 }}/g' \
-            -e '/gen_svg.py/ s/--birth 1989-03/--birth ${{ secrets.BIRTH }}/g' \  # 新增：末尾添加 \
-            Dockerfile
+            -e '/gen_svg.py/ s/--birth 1989-03/--birth ${{ secrets.BIRTH }}/g' \
+          Dockerfile  # 关键：前无任何空白，直接跟文件名
           echo "✅ 自定义参数修改完成"
           echo "📥 开始打印并确认Dockerfile"
           cat Dockerfile
