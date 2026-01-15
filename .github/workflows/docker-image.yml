@@ -59,7 +59,7 @@ jobs:
           # 进入源码目录，确认Dockerfile存在
           cd ${{ env.SRC_DIR }}
           find ./assets -name '*[0-9]*' -exec rm -rf {} +
-          rm -rf ./assets/mol.svg
+          #rm -rf ./assets/mol.svg
           if [ ! -f Dockerfile ]; then
             echo "❌ 源码目录中未找到Dockerfile"
             exit 1
