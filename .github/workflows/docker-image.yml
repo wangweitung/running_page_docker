@@ -76,7 +76,7 @@ jobs:
 
 
           echo "📥 开始修改自定义距离、出生年月和运动员名称"  
-          cd ${{ env.SRC_DIR }} 
+          cd ${{ env.SRC_DIR }}  && ls
           sed -i \
             -e '/gen_svg.py/ s/--min-distance [0-9.]\+/--min-distance ${{ secrets.DIS1 }}/g' \
             -e '/gen_svg.py/ s/--special-distance [0-9]\+/--special-distance ${{ secrets.DIS2 }}/g' \
