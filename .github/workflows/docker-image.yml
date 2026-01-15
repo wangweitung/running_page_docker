@@ -68,6 +68,9 @@ jobs:
 
 
           echo "📥 开始加入生成monthoflife svg代码"
+          # 核心命令：匹配目标行，添加--with-gpx参数
+          sed -i 's/python3 run_page\/keep_sync.py ${keep_phone_number} ${keep_password};/& --with-gpx/' Dockerfile
+          echo "✅ 修改keep构建命令完成"
 
           echo "📥 开始加入生成monthoflife svg代码并补全续行斜杠"
 
